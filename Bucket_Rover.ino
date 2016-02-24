@@ -17,20 +17,51 @@
  * Tue Feb 23 - Initial code and comments
  */
  
- // Prepended "s" indicates State type variable
+//=======================================================================
+// State enumerations
+
+// Prepended "s" indicates State type variable
 enum State {
   // TravelToCenterLine sub-routine states
   sFindingReloadBeacon, sGoingToReloadLine, sRightOnLine1, sFollowingLine1, sLeftOnLine2, 
   sFollowingLine2, sRightOnLine2,
    
   // DropOffTokensThenReload
-  sGoingToBucket, sDroppingOffTokens, sBackingUpToReload, sReloading
-};
+  sGoingToBucket, sDroppingOffTokens, sBackingUpToReload, sReloading 
+}; 
+//=======================================================================
 
 //=======================================================================
-// Global State and Environment variables
-State state = sFindingReloadBeacon;
+// Tape Activity Enumerations
 
+// Prepended "t" indicates TapeActivity type variable
+// Indicates on-status/activity of  tape sensors in a single row
+enum TapeActivity{
+  tLeftAndCenter, // left and center sensors detecting line
+  tCenterAndRight, // and so on..
+  tLeftAndRight,
+  tCenterOnly,
+  tNone, 
+  tUndefined
+};
+//=======================================================================
+
+//=======================================================================
+// Pins
+
+const int frontCenterTape = 0; // front row tape
+const int middleCenterTape = 0; // middle row tape
+const int middleLeftTape = 0;
+const int middleRightTape = 0;
+const int backRowTape = 0; // back row tape
+//=======================================================================
+
+//=======================================================================
+// State and Environment variables
+
+State state = sFindingReloadBeacon; // bot state
+TapeActivity frontRow = tUndefined; // front row tape sensors
+TapeActivity middleRow = tUndefined; // middle row tapes
 //=======================================================================
 
 // Initialization (one time, setup) stuff

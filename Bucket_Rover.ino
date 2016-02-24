@@ -30,7 +30,7 @@
 #define MTR_SPEED          100
  
 //=======================================================================
-// State enumerations
+// State Enumerations
 
 // Prepended "s" indicates State type variable
 enum State {
@@ -45,11 +45,11 @@ enum State {
 //=======================================================================
 
 //=======================================================================
-// Tape Activity Enumerations
+// Tape Activity Enums
 
 // Prepended "t" indicates TapeActivity type variable
 // Indicates on-status/activity of  tape sensors in a single row
-enum TapeActivity{
+enum TapeActivity {
   
   tLeftAndCenter,  // left and center sensors detecting line, and so on..
   tCenterAndRight,
@@ -62,14 +62,26 @@ enum TapeActivity{
 //=======================================================================
 
 //=======================================================================
-// Beacon Detector Enumerations
+// Beacon Detector Enums
 
 // Prepended "b" indicates BeaconStat type variable
 // Indicates detection of beacon or not
-enum BeaconStat{
+enum BeaconStat {
   
   bDetected,   // signal detected
   bUndetected  // signal undetected
+};
+//=======================================================================
+
+//=======================================================================
+// Timer Enums
+
+// Indicates timer type
+enum Timer {
+  
+  Rotate_Timer,  // timer for making quick, small angles of rotation
+  DropOff_Timer, // token drop off timer
+  Reload_Timer  // token reload timer
 };
 //=======================================================================
 
@@ -97,7 +109,6 @@ BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 // Initialization (one time, setup) stuff
 void setup() {
   // Init pins
-
 }
 
 // Stuff done many times 
@@ -173,3 +184,16 @@ void TravelToCenterLine(){}
 void DropOffTokensThenReload(){}
 
 /*----------DropOffTokensThenReload Helpers----------*/
+
+
+/*----------General Helpers----------*/
+// start specified timer
+void StartTimer(int timer, unsigned long time){
+  TMRArd_InitTimer(timer, time);
+}
+
+// return whether timer has expired or not
+unsigned char IsTimerExpired(int timer){
+  return (unsigned char)(TMRArd_IsTimerExpired(timer));
+}
+

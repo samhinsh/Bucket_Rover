@@ -15,13 +15,26 @@
  *
  * Changelog:
  * Tue Feb 23 - Initial code and comments
+ * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
  */
+ 
+/*---------------Includes-----------------------------------*/
+#include <Timers.h>
+
+/*---------------Module Defines-----------------------------*/
+#define LIGHT_THRESHOLD    350 // smaller at night
+#define FENCE_THRESHOLD    700
+#define ONE_SEC            1000
+#define TEN_SEC            10000
+#define TIME_INTERVAL      ONE_SEC
+#define MTR_SPEED          100
  
 //=======================================================================
 // State enumerations
 
 // Prepended "s" indicates State type variable
 enum State {
+  
   // TravelToCenterLine sub-routine states
   sFindingReloadBeacon, sGoingToReloadLine, sRightOnLine1, sFollowingLine1, sLeftOnLine2, 
   sFollowingLine2, sRightOnLine2,
@@ -37,31 +50,48 @@ enum State {
 // Prepended "t" indicates TapeActivity type variable
 // Indicates on-status/activity of  tape sensors in a single row
 enum TapeActivity{
-  tLeftAndCenter, // left and center sensors detecting line
-  tCenterAndRight, // and so on..
+  
+  tLeftAndCenter,  // left and center sensors detecting line, and so on..
+  tCenterAndRight,
   tLeftAndRight,
-  tCenterOnly,
-  tNone, 
+  tCenter,         // only center tape detecting line
+  tAll,            // left, center, and right detecting line
+  tNone,           // no sensors detecting line
   tUndefined
+};
+//=======================================================================
+
+//=======================================================================
+// Beacon Detector Enumerations
+
+// Prepended "b" indicates BeaconStat type variable
+// Indicates detection of beacon or not
+enum BeaconStat{
+  
+  bDetected,   // signal detected
+  bUndetected  // signal undetected
 };
 //=======================================================================
 
 //=======================================================================
 // Pins
 
-const int frontCenterTape = 0; // front row tape
+// Unassigned
+const int frontCenterTape = 0;  // front row tape
 const int middleCenterTape = 0; // middle row tape
 const int middleLeftTape = 0;
 const int middleRightTape = 0;
-const int backRowTape = 0; // back row tape
+const int beaconDetector = 0;   // IR detection circuit
 //=======================================================================
 
 //=======================================================================
 // State and Environment variables
 
-State state = sFindingReloadBeacon; // bot state
-TapeActivity frontRow = tUndefined; // front row tape sensors
+State state = sFindingReloadBeacon;  // bot state
+TapeActivity frontRow = tUndefined;  // front row tape sensors
 TapeActivity middleRow = tUndefined; // middle row tapes
+BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
+BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 //=======================================================================
 
 // Initialization (one time, setup) stuff
@@ -102,7 +132,16 @@ void loop() {
      1 kHz IR Detector        - Bucket Beacon signal
      5 kHz IR Detector        - Reload Beacon signal
  =======================================================================*/
-void CollectEnvInfo(){}
+void CollectEnvInfo(){
+  ReadTapeSensors();
+  Check1kHzBeaconDetector();
+  Check5kHzBeaconDetector();
+}
+
+/*----------CollectEnvInfo Helpers----------*/
+void ReadTapeSensors(){}
+void Check1kHzBeaconDetector(){}
+void Check5kHzBeaconDetector(){}
 
 /* Sub-routine for finding the 5kHz reload box from the right side and 
  * traveling to the center line of the stadium.
@@ -120,6 +159,8 @@ void CollectEnvInfo(){}
  */
 void TravelToCenterLine(){}
 
+/*----------TravelToCenterLine Helpers----------*/
+
 /*=======================================================================
  * Sub-routine for traveling to the buckets, dropping off tokens and
  * returning to the reload station.
@@ -130,3 +171,5 @@ void TravelToCenterLine(){}
      sReloading           - remain idle for reloading (RD_timer)
  =======================================================================*/
 void DropOffTokensThenReload(){}
+
+/*----------DropOffTokensThenReload Helpers----------*/

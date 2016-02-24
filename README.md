@@ -1,3 +1,6 @@
+Bucket Rover
+==========
+
 Author: Samuel Hinshelwood, Jr.
 
 ME 210 Final Project, Winter 2016

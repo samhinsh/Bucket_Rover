@@ -16,6 +16,16 @@
  * Changelog:
  * Tue Feb 23 - Initial code and comments
  */
+ 
+ // Pre-pended "s" indicates State type variable
+enum States {
+  // TravelToCenterLine sub-routine states
+  sFindingReload, sGoToReloadLine, sRightOnLine1, sFollowLine1, sLeftOnLine1, 
+  sFollowLine2, sRightOnLine2,
+   
+  // DropOffTokensThenReload
+  sGoToBucket, sDropOffTokens, sBackupToReload, sReload
+};
 
 // Initialization (one time, setup) stuff
 void setup() {

@@ -17,19 +17,25 @@
  * Tue Feb 23 - Initial code and comments
  */
  
- // Pre-pended "s" indicates State type variable
-enum States {
+ // Prepended "s" indicates State type variable
+enum State {
   // TravelToCenterLine sub-routine states
-  sFindingReload, sGoToReloadLine, sRightOnLine1, sFollowLine1, sLeftOnLine1, 
-  sFollowLine2, sRightOnLine2,
+  sFindingReloadBeacon, sGoingToReloadLine, sRightOnLine1, sFollowingLine1, sLeftOnLine2, 
+  sFollowingLine2, sRightOnLine2,
    
   // DropOffTokensThenReload
-  sGoToBucket, sDropOffTokens, sBackupToReload, sReload
+  sGoingToBucket, sDroppingOffTokens, sBackingUpToReload, sReloading
 };
+
+//=======================================================================
+// Global State and Environment variables
+State state = sFindingReloadBeacon;
+
+//=======================================================================
 
 // Initialization (one time, setup) stuff
 void setup() {
-  // put your setup code here, to run once:
+  // Init pins
 
 }
 
@@ -54,31 +60,42 @@ void loop() {
 
 }
 
-/* Collect real-time information about the environment.
+/*=======================================================================
+ * Collect real-time information about the environment.
  * This info will be stored in global variables toward the beginning of 
  * this file, and used in later sub-routines. 
- */
+ * Information collected:
+     Front Row Tape Sensor(s) - placement TBD
+     Center Tape Sensor(s)    - placement TBD
+     Back Row Tape Sensor(s)  - placement TBD
+     1 kHz IR Detector        - Bucket Beacon signal
+     5 kHz IR Detector        - Reload Beacon signal
+ =======================================================================*/
 void CollectEnvInfo(){}
 
 /* Sub-routine for finding the 5kHz reload box from the right side and 
  * traveling to the center line of the stadium.
  * Applicable enter states: 
- *   FR (find reload beacon)       - 
-     GR (go to reload line)        -
-     R1 (turn right onto 1st line) -
-     FL1 (follow 1st line)         - 
-     L (turn left onto 2nd line)   - 
-     FL2 (follow 2nd line)         -
-     R2 (trn right on center line) - 
+     sFindingReloadBeacon - rotate (then set small I_timer) until 5kHz signal
+                            found via IR detection
+     sGoingToReloadLine   - move forward until line detected in front
+     sRightOnLine1        - rotate to the right for small duration (R_timer)
+     sFollowingLine1      - follow line, TBD
+     sLeftOnLine2         - TBD, need condition for turning left (or new states
+                            for simply detecting front && right tape sensors at
+                            "crossroad" of center line, then turning right)
+     sFollowingLine2      - TBD
+     sRightOnLine2        - TBD
  */
 void TravelToCenterLine(){}
 
-/* Sub-routine for traveling to the buckets, dropping off tokens and
+/*=======================================================================
+ * Sub-routine for traveling to the buckets, dropping off tokens and
  * returning to the reload station.
  * Applicable enter states: 
- *   GB (go to bucket)           -
-     D (drop off chips)          -
-     B (backup to reload statn.) -
-     RLD (reload tokens)         -
- */
+     sGoingToBucket       - follow line until front row detects "crossroad"
+     sDroppingOffTokens   - activate servo drop off mechanism (D_timer)
+     sBackingUpToReload   - back up until back row detects "crossroad"
+     sReloading           - remain idle for reloading (RD_timer)
+ =======================================================================*/
 void DropOffTokensThenReload(){}

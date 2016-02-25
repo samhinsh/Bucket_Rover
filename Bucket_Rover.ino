@@ -81,7 +81,8 @@ enum Timer {
   
   Rotate_Timer,  // timer for making quick, small angles of rotation
   DropOff_Timer, // token drop off timer
-  Reload_Timer  // token reload timer
+  Reload_Timer,  // token reload timer
+  Competition_Timer
 };
 //=======================================================================
 
@@ -109,10 +110,14 @@ BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 // Initialization (one time, setup) stuff
 void setup() {
   // Init pins
+  // Init competition timer
 }
 
 // Stuff done many times 
 void loop() {
+  // if competition timer expired
+    // do nothing
+  
   // Collect real-time information about the environment
   CollectEnvInfo();
   

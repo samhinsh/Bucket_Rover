@@ -16,7 +16,8 @@
  * Changelog:
  * Tue Feb 23 - Initial code and comments
  * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
- * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload()
+ * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
+                abstracted movement fn's
  */
  
 /*---------------Includes-----------------------------------*/
@@ -53,6 +54,11 @@ void Reload();
 
 // General Helpers
 void FollowLine();
+void MoveForward();
+void MoveReverse();
+void StopMoving();
+void SetLeftRightMotorSpeed(int leftSpeed, int rightSpeed);
+
 void StartTimer(int timer, unsigned long time);
 unsigned char IsTimerExpired(int timer);
 
@@ -289,18 +295,18 @@ void GoToBucket(){
   
   // Todo:
   // start motors moving forward (likely, if not handled by FollowLine)
+  MoveForward();
   
   // change direction slightly (with motors) if off line (off center tape sensor)
   FollowLine();
 }
 
 // Drop off tokens by turning on servos & starting
-
 void DropOffTokens(){
   state == sDroppingOffTokens;
   
-  // Todo:
   // stop motors
+  StopMoving();
   
   // start drop-off mechanism timer
   if(IsTimerExpired(DropOff_Timer)){
@@ -315,16 +321,16 @@ void DropOffTokens(){
 void BackupToReloadStation(){
   state == sBackingUpToReload;
   
-  // Todo:
   // reverse motors for backing up (no line following)
+  MoveReverse();
 }
 
 // Remain idle at reload station while user loads tokens
 void Reload(){
   state == sReloading;
   
-  // Todo:
-  // stop motors, remain idle
+  // remain idle
+  StopMoving();
   
   // start reload timer (change if reload-release switch is desired)
   if(IsTimerExpired(Reload_Timer)){
@@ -344,12 +350,40 @@ void FollowLine(){
   // Implement tape-reading cases and motor turning + timer (?-unsure)
 }
 
+// Set motors to constant forward speed
+void MoveForward(){
+  // Todo:
+  // get pinout, set motors speed to to MTR_SPEED
+  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+}
+
+// Set motors to constant reverse speed
+void MoveReverse(){
+  // Todo:
+  // get pinout, set motors speed to to -MTR_SPEED
+  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
+}
+
+// Stop motors
+void StopMoving(){
+  
+  // Todo:
+  // get pinout, set motors speed to 0
+  SetLeftRightMotorSpeed(0, 0);
+}
+
+// Set left and right motors to specified speeds
+void SetLeftRightMotorSpeed(int leftSpeed, int rightSpeed){
+  // Todo:
+  // Get code for actually operating motor
+}
+
 // Start specified timer
 void StartTimer(int timer, unsigned long time){
   TMRArd_InitTimer(timer, time);
 }
 
-// Return whether timer has expired or not
+// Return whether specified timer has expired or not
 unsigned char IsTimerExpired(int timer){
   return (unsigned char)(TMRArd_IsTimerExpired(timer));
 }

@@ -16,6 +16,7 @@
  * Changelog:
  * Tue Feb 23 - Initial code and comments
  * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
+ * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload()
  */
  
 /*---------------Includes-----------------------------------*/
@@ -27,7 +28,6 @@
 #define ONE_SEC            1000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
-#define TIME_INTERVAL      ONE_SEC
 #define MTR_SPEED          100
  
 /*---------------Function Prototypes-------------------------*/
@@ -57,7 +57,7 @@ unsigned char IsTimerExpired(int timer);
 
 
 //=======================================================================
-// State Enumerations
+// State Enumerations - for bot activity at any given time
 
 // Prepended "s" indicates State type variable
 enum State {
@@ -72,7 +72,7 @@ enum State {
 //=======================================================================
 
 //=======================================================================
-// Tape Activity Enums
+// Tape Activity Enums - for quick summary of tape row readings
 
 // Prepended "t" indicates TapeActivity type variable
 // Indicates on-status/activity of  tape sensors in a single row
@@ -89,7 +89,7 @@ enum TapeActivity {
 //=======================================================================
 
 //=======================================================================
-// Beacon Detector Enums
+// Beacon Detector Enums - for human readable result of beacon detection
 
 // Prepended "b" indicates BeaconStat type variable
 // Indicates detection of beacon or not
@@ -101,7 +101,7 @@ enum BeaconStat {
 //=======================================================================
 
 //=======================================================================
-// Timer Enums
+// Timer Enums - for utilizing timing various actions
 
 // Indicates timer type
 enum Timer {
@@ -114,7 +114,7 @@ enum Timer {
 //=======================================================================
 
 //=======================================================================
-// Pins
+// Pins - Physical pinout of circuitry
 
 // Unassigned
 const int frontCenterTape = 0;  // front row tape

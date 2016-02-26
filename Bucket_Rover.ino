@@ -21,7 +21,6 @@
  * 
  * Todos: 
  * -Redesign initial state-machine (S1)
- * -Formulate DC motor control code
  * -Formulate tape-reading code
  * -Formulate beacon-sensing code
  * -Formulate line-following code
@@ -29,6 +28,7 @@
  
 /*---------------Includes-----------------------------------*/
 #include <Timers.h>
+#include "Pulse.h"
 
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
@@ -64,7 +64,7 @@ void FollowLine();
 void MoveForward();
 void MoveReverse();
 void StopMoving();
-void SetLeftRightMotorSpeed(int leftSpeed, int rightSpeed);
+void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed);
 
 void StartTimer(int timer, unsigned long time);
 unsigned char IsTimerExpired(int timer);
@@ -120,10 +120,10 @@ enum BeaconStat {
 // Indicates timer type
 enum Timer {
   
-  Rotate_Timer,  // timer for making quick, small angles of rotation
-  DropOff_Timer, // token drop off timer
-  Reload_Timer,  // token reload timer
-  Competition_Timer
+  Rotate_Timer,     // timer for making quick, small angles of rotation
+  DropOff_Timer,    // token drop off timer
+  Reload_Timer,     // token reload timer
+  Competition_Timer // 2-minute all around timer
 };
 //=======================================================================
 
@@ -131,11 +131,15 @@ enum Timer {
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int frontCenterTape = 0;  // front row tape
-const int middleCenterTape = 0; // middle row tape
+const int frontCenterTape = 0;      // front row tape
+const int middleCenterTape = 0;     // middle row tape
 const int middleLeftTape = 0;
 const int middleRightTape = 0;
-const int beaconDetector = 0;   // IR detection circuit
+const int beaconDetector = 0;       // IR detection circuit
+const int leftMtrDirectionPin = 0;  // motor H-bridge direction pin
+const int rightMtrDirectionPin = 0;
+const int leftMtrStepPin = 0;       // motor H-bridge power pin (pwm)
+const int rightMtrStepPin = 0;
 //=======================================================================
 
 //=======================================================================
@@ -275,6 +279,7 @@ void DropOffTokensThenReload(){
       BackupToReloadStation();
     }  
     // otherwise, continue dropping off tokens (implicitly)
+    else DropOffTokens();
   }
   
   // in, or leaving sBackingUpToReload
@@ -283,6 +288,7 @@ void DropOffTokensThenReload(){
       Reload();
     }
     // otherwise, continue backing up (implictly)
+    else BackupToReloadStation();
   }
   
   // in, or leaving sReloading
@@ -291,6 +297,7 @@ void DropOffTokensThenReload(){
        GoToBucket(); // repeat
      }
      // otherwise, continue reloading (idly)
+     else Reload();
   }
 }
 
@@ -309,6 +316,7 @@ void GoToBucket(){
 }
 
 // Drop off tokens by turning on servos & starting
+// Called continually (Todo)
 void DropOffTokens(){
   state == sDroppingOffTokens;
   
@@ -359,30 +367,36 @@ void FollowLine(){
 
 // Set motors to constant forward speed
 void MoveForward(){
-  // Todo:
-  // get pinout, set motors speed to to MTR_SPEED
   SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
 }
 
 // Set motors to constant reverse speed
 void MoveReverse(){
-  // Todo:
-  // get pinout, set motors speed to to -MTR_SPEED
   SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
 }
 
 // Stop motors
 void StopMoving(){
-  
-  // Todo:
-  // get pinout, set motors speed to 0
   SetLeftRightMotorSpeed(0, 0);
 }
 
 // Set left and right motors to specified speeds
-void SetLeftRightMotorSpeed(int leftSpeed, int rightSpeed){
+// Acceptable -100 <= MtrSpeed <= 100
+// Flips the motor's direction if  MtrSpeed < 0
+void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
   // Todo:
-  // Get code for actually operating motor
+  // Orient/fix code for operating motor (below)
+  
+  // set direction of motor based on sign of MtrSpeed var(s)
+  digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
+  digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
+  
+  // set pwm for each motor, and send pulse to pin(s)
+  InitPulse(leftMtrStepPin, map(abs(leftMtrSpeed), 0, 100, 10, 1000));
+  InitPulse(rightMtrStepPin, map(abs(rightMtrSpeed), 0, 100, 10, 1000));
+  if(IsPulseFinished()){
+    Pulse(1); // non-blocking, expect timing to be off (Todo)
+  }
 }
 
 // Start specified timer

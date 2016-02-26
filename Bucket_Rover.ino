@@ -25,10 +25,37 @@
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
 #define ONE_SEC            1000
+#define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TIME_INTERVAL      ONE_SEC
 #define MTR_SPEED          100
  
+/*---------------Function Prototypes-------------------------*/
+
+// Loop Fn's
+void CollectEnvInfo();
+void TravelToCenterLine();
+void DropOffTokensThenReload();
+
+// CollectEnvInfo Helpers
+void ReadTapeSensors();
+void Check1kHzBeaconDetector();
+void Check5kHzBeaconDetector();
+
+// TravelToCenterLine Helpers
+
+// DropOffTokensThenReload Helpers
+void GoToBucket();
+void DropOffTokens();
+void BackupToReloadStation();
+void Reload();
+
+// General Helpers
+void FollowLine();
+void StartTimer(int timer, unsigned long time);
+unsigned char IsTimerExpired(int timer);
+
+
 //=======================================================================
 // State Enumerations
 
@@ -101,8 +128,8 @@ const int beaconDetector = 0;   // IR detection circuit
 // State and Environment variables
 
 State state = sFindingReloadBeacon;  // bot state
-TapeActivity frontRow = tUndefined;  // front row tape sensors
-TapeActivity middleRow = tUndefined; // middle row tapes
+TapeActivity frontRowTape = tUndefined;  // front row tape sensors
+TapeActivity middleRowTape = tUndefined; // middle row tapes
 BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
 BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 //=======================================================================
@@ -147,7 +174,7 @@ void loop() {
      Back Row Tape Sensor(s)  - placement TBD
      1 kHz IR Detector        - Bucket Beacon signal
      5 kHz IR Detector        - Reload Beacon signal
- =======================================================================*/
+========================================================================*/
 void CollectEnvInfo(){
   ReadTapeSensors();
   Check1kHzBeaconDetector();
@@ -155,11 +182,27 @@ void CollectEnvInfo(){
 }
 
 /*----------CollectEnvInfo Helpers----------*/
-void ReadTapeSensors(){}
-void Check1kHzBeaconDetector(){}
-void Check5kHzBeaconDetector(){}
 
-/* Sub-routine for finding the 5kHz reload box from the right side and 
+// Get tape readings for frontRowTape and backRowTape sensor rows
+void ReadTapeSensors(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+// Get reading from 1kHz beacon-detector circuit
+void Check1kHzBeaconDetector(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+// Get reading from 5kHz beacon-detector circuit
+void Check5kHzBeaconDetector(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+/*=======================================================================
+ * Sub-routine for finding the 5kHz reload box from the right side and 
  * traveling to the center line of the stadium.
  * Applicable enter states: 
      sFindingReloadBeacon - rotate (then set small I_timer) until 5kHz signal
@@ -172,10 +215,16 @@ void Check5kHzBeaconDetector(){}
                             "crossroad" of center line, then turning right)
      sFollowingLine2      - TBD
      sRightOnLine2        - TBD
- */
-void TravelToCenterLine(){}
+========================================================================*/
+void TravelToCenterLine(){
+  // Todo:
+  // Abstract out necessary states
+}
 
 /*----------TravelToCenterLine Helpers----------*/
+
+// Todo:
+// Abstract out helpers
 
 /*=======================================================================
  * Sub-routine for traveling to the buckets, dropping off tokens and
@@ -185,19 +234,113 @@ void TravelToCenterLine(){}
      sDroppingOffTokens   - activate servo drop off mechanism (D_timer)
      sBackingUpToReload   - back up until back row detects "crossroad"
      sReloading           - remain idle for reloading (RD_timer)
- =======================================================================*/
-void DropOffTokensThenReload(){}
+========================================================================*/
+void DropOffTokensThenReload(){
+  
+  // in, or leaving sGoingToBucket
+  if(state == sGoingToBucket){ 
+    if(middleRowTape != tAll){ // middle not sitting on crossroad in front of buckets
+      GoToBucket(); // move forward to bucket (line follow)
+    } else { // middleRowTape sitting on crossroad
+      DropOffTokens(); // start dropping off tokens
+    }
+  }
+  
+  // in, or leaving sDroppingOffTokens
+  else if(state == sDroppingOffTokens){
+    if(IsTimerExpired(DropOff_Timer)){ // done dropping off tokens (timer expired)
+      // move on to sBackingUpToReload
+      BackupToReloadStation();
+    }  
+    // otherwise, continue dropping off tokens (implicitly)
+  }
+  
+  // in, or leaving sBackingUpToReload
+  else if(state == sBackingUpToReload){
+    if(middleRowTape == tAll){ // hit the reload crossroad from behind
+      Reload();
+    }
+    // otherwise, continue backing up (implictly)
+  }
+  
+  // in, or leaving sReloading
+  else if (state == sReloading){
+     if(IsTimerExpired(Reload_Timer)){ // reloading-timer finished
+       GoToBucket(); // repeat
+     }
+     // otherwise, continue reloading (idly)
+  }
+}
 
 /*----------DropOffTokensThenReload Helpers----------*/
 
+// Go to the bucket
+void GoToBucket(){
+  state == sGoingToBucket;
+  
+  // Todo:
+  // start motors moving forward (likely, if not handled by FollowLine)
+  
+  // change direction slightly (with motors) if off line (off center tape sensor)
+  FollowLine();
+}
+
+// Drop off tokens by turning on servos & starting
+
+void DropOffTokens(){
+  state == sDroppingOffTokens;
+  
+  // Todo:
+  // stop motors
+  
+  // start drop-off mechanism timer
+  if(IsTimerExpired(DropOff_Timer)){
+    StartTimer(DropOff_Timer, THREE_SEC); // 3-second timer
+  }
+  
+  // Todo:
+  // turn drop-off servo(s) on
+}
+
+// Back the bot up to the reload station
+void BackupToReloadStation(){
+  state == sBackingUpToReload;
+  
+  // Todo:
+  // reverse motors for backing up (no line following)
+}
+
+// Remain idle at reload station while user loads tokens
+void Reload(){
+  state == sReloading;
+  
+  // Todo:
+  // stop motors, remain idle
+  
+  // start reload timer (change if reload-release switch is desired)
+  if(IsTimerExpired(Reload_Timer)){
+    StartTimer(Reload_Timer, THREE_SEC); // 5-second timer
+  }
+}
+
 
 /*----------General Helpers----------*/
-// start specified timer
+
+// Line-following algorithm
+// Change bot direction slightly by varying left-right motor speed
+// to remain centered on middleRowTape's center tape sensor)
+void FollowLine(){
+  
+  // Todo:
+  // Implement tape-reading cases and motor turning + timer (?-unsure)
+}
+
+// Start specified timer
 void StartTimer(int timer, unsigned long time){
   TMRArd_InitTimer(timer, time);
 }
 
-// return whether timer has expired or not
+// Return whether timer has expired or not
 unsigned char IsTimerExpired(int timer){
   return (unsigned char)(TMRArd_IsTimerExpired(timer));
 }

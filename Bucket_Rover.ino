@@ -140,6 +140,7 @@ const int leftMtrDirectionPin = 0;  // motor H-bridge direction pin
 const int rightMtrDirectionPin = 0;
 const int leftMtrStepPin = 0;       // motor H-bridge power pin (pwm)
 const int rightMtrStepPin = 0;
+const int LEDpin = 0;               // state indicator LED
 //=======================================================================
 
 //=======================================================================
@@ -305,7 +306,8 @@ void DropOffTokensThenReload(){
 
 // Go to the bucket
 void GoToBucket(){
-  state == sGoingToBucket;
+  state = sGoingToBucket;
+  // change LED indicator
   
   // Todo:
   // start motors moving forward (likely, if not handled by FollowLine)
@@ -318,7 +320,8 @@ void GoToBucket(){
 // Drop off tokens by turning on servos & starting
 // Called continually (Todo)
 void DropOffTokens(){
-  state == sDroppingOffTokens;
+  state = sDroppingOffTokens;
+  // change LED indicator
   
   // stop motors
   StopMoving();
@@ -334,7 +337,8 @@ void DropOffTokens(){
 
 // Back the bot up to the reload station
 void BackupToReloadStation(){
-  state == sBackingUpToReload;
+  state = sBackingUpToReload;
+  // change LED indicator
   
   // reverse motors for backing up (no line following)
   MoveReverse();
@@ -342,7 +346,8 @@ void BackupToReloadStation(){
 
 // Remain idle at reload station while user loads tokens
 void Reload(){
-  state == sReloading;
+  state = sReloading;
+  // change LED indicator
   
   // remain idle
   StopMoving();

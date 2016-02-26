@@ -28,6 +28,7 @@
 #define ONE_SEC            1000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
+#define TWO_MIN            120000
 #define MTR_SPEED          100
  
 /*---------------Function Prototypes-------------------------*/
@@ -138,28 +139,36 @@ BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 void setup() {
   // Init pins
   // Init competition timer
+  StartTimer(Competition_Timer, TWO_MIN);
 }
 
 // Stuff done many times 
 void loop() {
+  
   // if competition timer expired
-    // do nothing
+  if(IsTimerExpired(Competition_Timer)){
+    // stop moving, do nothing
+  } else { // run the bot
   
-  // Collect real-time information about the environment
-  CollectEnvInfo();
-  
-  // One-time-accomplishable sub-routine for finding the 5kHz reload box 
-  // from the right side and traveling to the center line of the stadium.
-  // Can be entered into at various states
-  if(true){
-    TravelToCenterLine();
-  } 
-  
-  // Sub-routine for traveling to the buckets, dropping off tokens
-  // and returning to the reload station. To be accomplished many times. 
-  // Can be entered into at various states
-  else {
-    DropOffTokensThenReload();
+    // Collect real-time information about the environment
+    CollectEnvInfo();
+    
+    // Sub-routine for traveling to the buckets, dropping off tokens
+    // and returning to the reload station. To be accomplished many times. 
+    // Can be entered into at various states
+    if(state == sGoingToBucket || state == sDroppingOffTokens || 
+       state == sBackingUpToReload || state == sReloading) {
+         
+         DropOffTokensThenReload();
+    }
+    
+    // One-time-accomplishable sub-routine for finding the 5kHz reload box 
+    // in the beginning from the right side and traveling to the center 
+    // line of the stadium. Can be entered into at various states
+    else {
+      
+      TravelToCenterLine();
+    } 
   }
 
 }

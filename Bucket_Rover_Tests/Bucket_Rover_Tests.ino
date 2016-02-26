@@ -11,28 +11,52 @@
  * Description: 
  * This file describes funcitonality tests for various aspects of the Bucket_Rover bot.
  *
-
  */
  
 /*---------------Includes-----------------------------------*/
+#include <Timers.h>
 #include "Pulse.h"
 
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
 #define ONE_SEC            1000
+#define TWO_SEC            2000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
 #define MTR_SPEED          100
  
 /*---------------Function Prototypes-------------------------*/
+
+// Loop Fn's
+void CollectEnvInfo();
+
+// CollectEnvInfo Helpers
+void ReadTapeSensors();
+void Check1kHzBeaconDetector();
+void Check5kHzBeaconDetector();
+
 // General Helpers
 void FollowLine();
 void MoveForward();
 void MoveReverse();
 void StopMoving();
 void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed);
+
+void StartTimer(int timer, unsigned long time);
+unsigned char IsTimerExpired(int timer);
+
+
+//=======================================================================
+// Timer Enums - for utilizing timing various actions
+
+// Indicates timer type
+enum Timer {
+  
+  MotorSpeed_Timer, // timer between changing the speed of the motor
+};
+//=======================================================================
 
 //=======================================================================
 // Pins - Physical pinout of circuitry
@@ -50,6 +74,12 @@ const int rightMtrStepPin = 0;
 const int LEDpin = 0;               // state indicator LED
 //=======================================================================
 
+//=======================================================================
+// Globals
+
+// function array, for later use
+void (* MovementFns[])() = {FollowLine, MoveForward, MoveReverse, StopMoving};
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -57,27 +87,47 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  T_MotorTest_Forward();
+}
 
+
+//=======================================================================
+// Tests
+
+// check that the motor can successfully change speeds through a range using pwm
+// Also tests timers' functionality
+// Results: 
+void T_MotorTest_Forward(){
+  static int leftMtrSpeed = 0; // gets updated from last value each time (static keyword)
+  static int rightMtrSpeed = 0; // gets updated from last value each time
+  static int hitTopSpeed = LOW; // gets updated from last value each time
+  
+  // if timer expired/not started, set timer. Change motor speed
+  if(IsTimerExpired(MotorSpeed_Timer)){
+    StartTimer(MotorSpeed_Timer, TWO_SEC);
+    
+    // cycle thru motor speeds
+    // takes 10 seconds to reach top speed, same to reach bottom speed
+    if(hitTopSpeed == LOW){ // increase speed
+      leftMtrSpeed += 20;
+      rightMtrSpeed += 20;
+    } else { // decrease speed
+      leftMtrSpeed -= 20;
+      rightMtrSpeed -= 20;
+    }
+    
+    // reset ascent/descent
+    if (leftMtrSpeed == 100 || rightMtrSpeed == 100) hitTopSpeed = HIGH;
+    if(leftMtrSpeed == 0 || rightMtrSpeed == 0) hitTopSpeed = LOW;
+  }
+  
+  // Send motor speed to motor
+  SetLeftRightMotorSpeed(leftMtrSpeed, rightMtrSpeed);
 }
 
 //=======================================================================
 // Functions Needing Testing
 
-// Set motors to constant forward speed
-void MoveForward(){
-  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
-}
-
-// Set motors to constant reverse speed
-void MoveReverse(){
-  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
-}
-
-// Stop motors
-void StopMoving(){
-  SetLeftRightMotorSpeed(0, 0);
-}
 
 // Set left and right motors to specified speeds
 // Acceptable -100 <= MtrSpeed <= 100
@@ -97,4 +147,60 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
     Pulse(1); // non-blocking, expect timing to be off (Todo)
   }
 }
+
+// Start specified timer
+void StartTimer(int timer, unsigned long time){
+  TMRArd_InitTimer(timer, time);
+}
+
+// Return whether specified timer has expired or not
+unsigned char IsTimerExpired(int timer){
+  return (unsigned char)(TMRArd_IsTimerExpired(timer));
+}
+
+// Set motors to constant forward speed
+void MoveForward(){
+  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+}
+
+// Set motors to constant reverse speed
+void MoveReverse(){
+  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
+}
+
+// Stop motors
+void StopMoving(){
+  SetLeftRightMotorSpeed(0, 0);
+}
+
+void CollectEnvInfo(){
+  ReadTapeSensors();
+  Check1kHzBeaconDetector();
+  Check5kHzBeaconDetector();
+}
+
+// Get tape readings for frontRowTape and backRowTape sensor rows
+void ReadTapeSensors(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+// Get reading from 1kHz beacon-detector circuit
+void Check1kHzBeaconDetector(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+// Get reading from 5kHz beacon-detector circuit
+void Check5kHzBeaconDetector(){
+  // Todo:
+  // Get pinout and reading code
+}
+
+void FollowLine(){
+  
+  // Todo:
+  // Implement tape-reading cases and motor turning + timer (?-unsure)
+}
 //=======================================================================
+

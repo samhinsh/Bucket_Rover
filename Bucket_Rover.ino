@@ -18,6 +18,13 @@
  * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
  * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
                 abstracted movement fn's
+ * 
+ * Todos: 
+ * -Redesign initial state-machine (S1)
+ * -Formulate DC motor control code
+ * -Formulate tape-reading code
+ * -Formulate beacon-sensing code
+ * -Formulate line-following code
  */
  
 /*---------------Includes-----------------------------------*/

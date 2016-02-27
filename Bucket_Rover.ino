@@ -21,7 +21,6 @@
  * 
  * Todos: 
  * -Redesign initial state-machine (S1)
- * -Formulate tape-reading code
  * -Formulate beacon-sensing code
  * -Formulate line-following code
  */
@@ -159,12 +158,16 @@ BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 // Initialization (one time, setup) stuff
 void setup() {
   // Init pins
+  
+  // inputs
   pinMode(middleCenterTape, INPUT);
   pinMode(middleLeftTape, INPUT);
   pinMode(middleRightTape, INPUT);
   pinMode(middleFarLeftTape, INPUT);
   pinMode(middleFarRightTape, INPUT);
   pinMode(beaconDetector, INPUT);
+  
+  // outputs
   pinMode(leftMtrDirectionPin, OUTPUT);
   pinMode(rightMtrDirectionPin, OUTPUT);
   pinMode(leftMtrStepPin, OUTPUT);
@@ -257,6 +260,7 @@ void ReadTapeSensors(){
 void Check1kHzBeaconDetector(){
   // Todo: set beacon pin to 1kHz
   
+  // on-value inverted (detected shows LOW on circuit), so flip the result
   !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
 }
 
@@ -285,6 +289,11 @@ void Check5kHzBeaconDetector(){
 void TravelToCenterLine(){
   // Todo:
   // Abstract out necessary states
+  
+  // Rotate until Reload beacon found
+  // Rotate right for set offset (projected to center line)
+  // Drive to line
+  // Center on line
 }
 
 /*----------TravelToCenterLine Helpers----------*/
@@ -305,10 +314,10 @@ void DropOffTokensThenReload(){
   
   // in, or leaving sGoingToBucket
   if(state == sGoingToBucket){ 
-    if(centerTapeSet != tAll){ // middle not sitting on crossroad in front of buckets
-      GoToBucket(); // move forward to bucket (line follow)
-    } else { // middleRowTape sitting on crossroad
+    if(centerTapeSet == tAll){ // middleRowTape sitting on crossroad
       DropOffTokens(); // start dropping off tokens
+    } else { // not in front of buckets, keep going to bucket
+      GoToBucket(); // move forward to bucket (line follow)
     }
   }
   

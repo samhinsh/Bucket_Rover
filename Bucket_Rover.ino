@@ -96,8 +96,10 @@ enum TapeActivity {
   tCenterAndRight,
   tLeftAndRight,
   tCenter,         // only center tape detecting line
+  tLeft,
+  tRight,
   tAll,            // left, center, and right detecting line
-  tNone,           // no sensors detecting line
+  tNone,           // no sensors in set detecting line
   tUndefined
 };
 //=======================================================================
@@ -131,10 +133,11 @@ enum Timer {
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int frontCenterTape = 0;      // front row tape
 const int middleCenterTape = 0;     // middle row tape
 const int middleLeftTape = 0;
 const int middleRightTape = 0;
+const int middleFarLeftTape = 0;
+const int middleFarRightTape = 0;
 const int beaconDetector = 0;       // IR detection circuit
 const int leftMtrDirectionPin = 0;  // motor H-bridge direction pin
 const int rightMtrDirectionPin = 0;
@@ -147,8 +150,8 @@ const int LEDpin = 0;               // state indicator LED
 // State and Environment variables
 
 State state = sFindingReloadBeacon;  // bot state
-TapeActivity frontRowTape = tUndefined;  // front row tape sensors
-TapeActivity middleRowTape = tUndefined; // middle row tapes
+TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
+TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
 BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
 BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 //=======================================================================
@@ -156,6 +159,18 @@ BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 // Initialization (one time, setup) stuff
 void setup() {
   // Init pins
+  pinMode(middleCenterTape, INPUT);
+  pinMode(middleLeftTape, INPUT);
+  pinMode(middleRightTape, INPUT);
+  pinMode(middleFarLeftTape, INPUT);
+  pinMode(middleFarRightTape, INPUT);
+  pinMode(beaconDetector, INPUT);
+  pinMode(leftMtrDirectionPin, OUTPUT);
+  pinMode(rightMtrDirectionPin, OUTPUT);
+  pinMode(leftMtrStepPin, OUTPUT);
+  pinMode(rightMtrStepPin, OUTPUT);
+  pinMode(LEDpin, OUTPUT);
+  
   // Init competition timer
   StartTimer(Competition_Timer, TWO_MIN);
 }
@@ -212,20 +227,44 @@ void CollectEnvInfo(){
 
 // Get tape readings for frontRowTape and backRowTape sensor rows
 void ReadTapeSensors(){
-  // Todo:
-  // Get pinout and reading code
+  
+  // collect individual tape readings
+  char middleCenter = !digitalRead(middleCenterTape);
+  char middleLeft = !digitalRead(middleLeftTape);
+  char middleRight = !digitalRead(middleRightTape);
+  char middleFarLeft = !digitalRead(middleFarLeftTape);
+  char middleFarRight = !digitalRead(middleFarRightTape);
+  
+  // summarize outside tape set
+  if(middleFarLeft > 0 && middleFarRight > 0) outsideTapeSet = tLeftAndRight; // left and right 
+                                                                              // on outside tape detect line
+  else if(middleFarLeft > 0) outsideTapeSet = tLeft;
+  else if(middleFarRight > 0) outsideTapeSet = tRight;
+  else outsideTapeSet = tNone;
+  
+  // summarize center tape set
+  if(middleCenter > 0 && middleLeft > 0 && middleRight > 0) centerTapeSet = tAll;
+  else if(middleLeft > 0 && middleCenter > 0) centerTapeSet = tLeftAndCenter;
+  else if(middleCenter > 0 && middleRight > 0) centerTapeSet = tCenterAndRight;
+  else if(middleLeft > 0 && middleRight > 0) centerTapeSet = tLeftAndRight;
+  else if(middleLeft > 0) centerTapeSet = tLeft;
+  else if(middleRight > 0) centerTapeSet = tRight;
+  else if(centerTapeSet > 0) centerTapeSet = tCenter;
+  else centerTapeSet = tNone;
 }
 
 // Get reading from 1kHz beacon-detector circuit
 void Check1kHzBeaconDetector(){
-  // Todo:
-  // Get pinout and reading code
+  // Todo: set beacon pin to 1kHz
+  
+  !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
 }
 
 // Get reading from 5kHz beacon-detector circuit
 void Check5kHzBeaconDetector(){
-  // Todo:
-  // Get pinout and reading code
+  // Todo: set beacon pin to 5kHz
+  
+  !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
 }
 
 /*=======================================================================
@@ -266,7 +305,7 @@ void DropOffTokensThenReload(){
   
   // in, or leaving sGoingToBucket
   if(state == sGoingToBucket){ 
-    if(middleRowTape != tAll){ // middle not sitting on crossroad in front of buckets
+    if(centerTapeSet != tAll){ // middle not sitting on crossroad in front of buckets
       GoToBucket(); // move forward to bucket (line follow)
     } else { // middleRowTape sitting on crossroad
       DropOffTokens(); // start dropping off tokens
@@ -285,7 +324,7 @@ void DropOffTokensThenReload(){
   
   // in, or leaving sBackingUpToReload
   else if(state == sBackingUpToReload){
-    if(middleRowTape == tAll){ // hit the reload crossroad from behind
+    if(centerTapeSet == tAll){ // hit the reload crossroad from behind
       Reload();
     }
     // otherwise, continue backing up (implictly)

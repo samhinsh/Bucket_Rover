@@ -17,7 +17,8 @@
  * Tue Feb 23 - Initial code and comments
  * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
  * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
-                abstracted movement fn's
+                abstracted movement fn's, added beacon detection logic,
+                added tape reading logic
  * 
  * Todos: 
  * -Redesign initial state-machine (S1)
@@ -32,6 +33,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
+#define HALF_SEC           500
 #define ONE_SEC            1000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
@@ -51,6 +53,10 @@ void Check1kHzBeaconDetector();
 void Check5kHzBeaconDetector();
 
 // TravelToCenterLine Helpers
+void FindReloadBeacon();
+void RotateTowardCenterLine();
+void GoToCenterLine();
+void CenterOnLine();
 
 // DropOffTokensThenReload Helpers
 void GoToBucket();
@@ -76,8 +82,7 @@ unsigned char IsTimerExpired(int timer);
 enum State {
   
   // TravelToCenterLine sub-routine states
-  sFindingReloadBeacon, sGoingToReloadLine, sRightOnLine1, sFollowingLine1, sLeftOnLine2, 
-  sFollowingLine2, sRightOnLine2,
+  sFindingReloadBeacon, sRotatingTowardCenterLine, sGoingToCenterLine, sCenteringOnLine,
    
   // DropOffTokensThenReload
   sGoingToBucket, sDroppingOffTokens, sBackingUpToReload, sReloading 
@@ -275,31 +280,33 @@ void Check5kHzBeaconDetector(){
  * Sub-routine for finding the 5kHz reload box from the right side and 
  * traveling to the center line of the stadium.
  * Applicable enter states: 
-     sFindingReloadBeacon - rotate (then set small I_timer) until 5kHz signal
-                            found via IR detection
-     sGoingToReloadLine   - move forward until line detected in front
-     sRightOnLine1        - rotate to the right for small duration (R_timer)
-     sFollowingLine1      - follow line, TBD
-     sLeftOnLine2         - TBD, need condition for turning left (or new states
-                            for simply detecting front && right tape sensors at
-                            "crossroad" of center line, then turning right)
-     sFollowingLine2      - TBD
-     sRightOnLine2        - TBD
+     sFindingReloadBeacon      - rotate small amount (Rotate_Timer) until 5kHz signal
+                                 found via IR detection
+     sRotatingTowardCenterLine - rotate (CenterLine_Timer) to face center line
+     sGoingToCenterLine        - move forward until line detected (central line)
+     sCenteringOnLine          - rotate until center tape only detected on line
 ========================================================================*/
 void TravelToCenterLine(){
   // Todo:
   // Abstract out necessary states
   
-  // Rotate until Reload beacon found
-  // Rotate right for set offset (projected to center line)
-  // Drive to line
-  // Center on line
+  
 }
 
 /*----------TravelToCenterLine Helpers----------*/
 
-// Todo:
-// Abstract out helpers
+// Rotate until 5kHz signal detected from reload beacon
+void FindReloadBeacon(){}
+
+// Rotate predetermined amount (using CenterLine_Timer) toward center line
+void RotateTowardCenterLine(){}
+
+// Move forward until hitting center line
+void GoToCenterLine(){}
+
+// Center bot on line
+void CenterOnLine(){}
+
 
 /*=======================================================================
  * Sub-routine for traveling to the buckets, dropping off tokens and

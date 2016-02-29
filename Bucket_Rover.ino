@@ -19,11 +19,13 @@
  * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
                 abstracted movement fn's, added beacon detection logic,
                 added tape reading logic
+ * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added Rotate()
  * 
  * Todos: 
  * -Redesign initial state-machine (S1)
  * -Formulate beacon-sensing code
  * -Formulate line-following code
+ * -Formulate Rotate()
  */
  
 /*---------------Includes-----------------------------------*/
@@ -35,10 +37,13 @@
 #define FENCE_THRESHOLD    700
 #define HALF_SEC           500
 #define ONE_SEC            1000
+#define TWO_SEC            2000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
 #define MTR_SPEED          100
+
+// Todo: Decide if multiple speed defines needed
  
 /*---------------Function Prototypes-------------------------*/
 
@@ -66,6 +71,7 @@ void Reload();
 
 // General Helpers
 void FollowLine();
+void Rotate(char direction, int speed);
 void MoveForward();
 void MoveReverse();
 void StopMoving();
@@ -121,6 +127,18 @@ enum BeaconStat {
 //=======================================================================
 
 //=======================================================================
+// RotateSpeed Enumerations - for bot speed when correcting orientation during 
+//                      line following
+
+// Prepended "r" indicates RotateSpeed tupe
+enum RotateSpeed {
+  
+  // TravelToCenterLine sub-routine states
+  rRegular, rFast
+}; 
+//=======================================================================
+
+//=======================================================================
 // Timer Enums - for utilizing timing various actions
 
 // Indicates timer type
@@ -129,6 +147,7 @@ enum Timer {
   Rotate_Timer,     // timer for making quick, small angles of rotation
   DropOff_Timer,    // token drop off timer
   Reload_Timer,     // token reload timer
+  CenterLine_Timer, // timer for rotating toward the center stadium line
   Competition_Timer // 2-minute all around timer
 };
 //=======================================================================
@@ -287,25 +306,86 @@ void Check5kHzBeaconDetector(){
      sCenteringOnLine          - rotate until center tape only detected on line
 ========================================================================*/
 void TravelToCenterLine(){
-  // Todo:
-  // Abstract out necessary states
+  // in, or leaving sFindingReloadBeacon
+  if(state == sFindingReloadBeacon){
+    if(beacon_5kHz == bUndetected){ // beacon undetected
+      if(IsTimerExpired(Rotate_Timer)){ // wait for timer, to rotate again
+        FindReloadBeacon();
+      }
+    } else RotateTowardCenterLine(); // otherwise, move toward center
+  }
   
+  // in, or leaving sRotatingTowardCenterLine
+  else if(state == sRotatingTowardCenterLine){
+    if(!IsTimerExpired(CenterLine_Timer)){ // continue rotating toward line if timer still going
+      RotateTowardCenterLine();
+    } else GoToCenterLine(); // otherwise, head to center line
+  }
+  
+  // in, or leaving sGoingToCenterLine
+  else if(state == sGoingToCenterLine){
+    if(centerTapeSet == tUndefined || centerTapeSet == tNone){ // no line found
+      GoToCenterLine();
+    } else CenterOnLine(); // center on line that was found (namely, the center line)
+  } 
+  
+  // in, or leaving sCenteringOnLine
+  else if(state == sCenteringOnLine){
+    if(centerTapeSet != tCenter){ // center tape sensor not the only one sensing the line
+      CenterOnLine(); // continue centering on line
+    } else GoToBucket(); // start following the line to the bucket(s)
+  } 
   
 }
 
 /*----------TravelToCenterLine Helpers----------*/
 
 // Rotate until 5kHz signal detected from reload beacon
-void FindReloadBeacon(){}
+void FindReloadBeacon(){
+  state = sFindingReloadBeacon;
+  
+  // rotate left at regular speed
+  Rotate('L', rRegular);
+  
+  // set timer if not started
+  if(IsTimerExpired(Rotate_Timer)){
+    StartTimer(Rotate_Timer, HALF_SEC);
+  }
+}
 
 // Rotate predetermined amount (using CenterLine_Timer) toward center line
-void RotateTowardCenterLine(){}
+void RotateTowardCenterLine(){
+  state = sRotatingTowardCenterLine;
+  
+  // rotate rightward toward center line
+  Rotate('R', rRegular);
+  
+  // set timer if not started
+  if(IsTimerExpired(CenterLine_Timer)){
+    StartTimer(CenterLine_Timer, TWO_SEC); // 2-second timer
+    
+    // Todo: Fix timing^ based on wheel speed at beacon-detection range
+  }
+}
 
 // Move forward until hitting center line
-void GoToCenterLine(){}
+void GoToCenterLine(){
+  state = sGoingToCenterLine;
+  MoveForward();
+}
 
 // Center bot on line
-void CenterOnLine(){}
+void CenterOnLine(){
+  state = sCenteringOnLine;
+  
+  if(centerTapeSet == tLeft){
+    MoveForward();
+  } else if(centerTapeSet == tLeftAndCenter){
+    Rotate('R', rRegular);
+  }
+  
+  // Todo: Test if third case (for right tape) is necessary
+}
 
 
 /*=======================================================================
@@ -423,6 +503,14 @@ void FollowLine(){
   
   // Todo:
   // Implement tape-reading cases and motor turning + timer (?-unsure)
+}
+
+// Rotates bot to the left or right (direction), with one of two speeds 
+// Inputs: direction - 'L' or 'R'
+//         speed     -  rRegular (1) or rFast (2)
+void Rotate(char direction, int speed){
+  // Todo: 
+  // Formulate code for wheel speeds
 }
 
 // Set motors to constant forward speed

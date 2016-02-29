@@ -50,6 +50,36 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed);
 void StartTimer(int timer, unsigned long time);
 unsigned char IsTimerExpired(int timer);
 
+//=======================================================================
+// Tape Activity Enums - for quick summary of tape row readings
+
+// Prepended "t" indicates TapeActivity type variable
+// Indicates on-status/activity of  tape sensors in a single row
+enum TapeActivity {
+  
+  tLeftAndCenter = 0,  // left and center sensors detecting line, and so on..
+  tCenterAndRight = 1,
+  tLeftAndRight = 2,
+  tCenter = 3,         // only center tape detecting line
+  tLeft = 4,
+  tRight = 5,
+  tAll = 6,            // left, center, and right detecting line
+  tNone = 7,           // no sensors in set detecting line
+  tUndefined = 8
+};
+//=======================================================================
+
+//=======================================================================
+// Beacon Detector Enums - for human readable result of beacon detection
+
+// Prepended "b" indicates BeaconStat type variable
+// Indicates detection of beacon or not
+enum BeaconStat {
+  
+  bDetected,   // signal detected
+  bUndetected  // signal undetected
+};
+//=======================================================================
 
 //=======================================================================
 // Timer Enums - for utilizing timing various actions
@@ -64,6 +94,10 @@ enum Timer {
 //=======================================================================
 // State and Environment variables
 
+TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
+TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
+BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
+BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
 Servo servo1; // arm mechanism 
 Servo servo2; // arm mechanism
 Servo servo3; // arm mechanism
@@ -73,7 +107,7 @@ Servo servo3; // arm mechanism
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int middleCenterTape = 0;     // middle row tape
+const int middleCenterTape = A4;     // middle row tape
 const int middleLeftTape = 0;
 const int middleRightTape = 0;
 const int middleFarLeftTape = 0;
@@ -134,39 +168,35 @@ void setup() {
 }
 
 void loop() {
-  MoveReverse();
+  ReportTapeSensors();
 }
 
 
 //=======================================================================
 // Tests
 
+void ReportTapeSensors(){
+  Serial.println(centerTapeSet);
+  ReadTapeSensors();
+  
+}
 
 //=======================================================================
 // Functions Needing Testing
 
-void CollectEnvInfo(){
-  ReadTapeSensors();
-  Check1kHzBeaconDetector();
-  Check5kHzBeaconDetector();
-}
-
-// Get tape readings for frontRowTape and backRowTape sensor rows
-void ReadTapeSensors(){
-  // Todo:
-  // Get pinout and reading code
-}
-
 // Get reading from 1kHz beacon-detector circuit
 void Check1kHzBeaconDetector(){
-  // Todo:
-  // Get pinout and reading code
+  // Todo: set beacon pin to 1kHz
+  
+  // on-value inverted (detected shows LOW on circuit), so flip the result
+  !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
 }
 
 // Get reading from 5kHz beacon-detector circuit
 void Check5kHzBeaconDetector(){
-  // Todo:
-  // Get pinout and reading code
+  // Todo: set beacon pin to 5kHz
+  
+  !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
 }
 
 void FollowLine(){
@@ -273,6 +303,36 @@ void T_MotorTest_Forward(){
   
   // Send motor speed to motor
   SetLeftRightMotorSpeed(leftMtrSpeed, rightMtrSpeed);
+}
+
+// Get tape readings for frontRowTape and backRowTape sensor rows
+// Results: pass
+// Review: Works preliminarily on single sensor, test again on multiple sensors
+void ReadTapeSensors(){
+  
+  // collect individual tape readings
+  char middleCenter = !digitalRead(middleCenterTape);
+  char middleLeft = !digitalRead(middleLeftTape);
+  char middleRight = !digitalRead(middleRightTape);
+  char middleFarLeft = !digitalRead(middleFarLeftTape);
+  char middleFarRight = !digitalRead(middleFarRightTape);
+  
+  // summarize outside tape set
+  if(middleFarLeft > 0 && middleFarRight > 0) outsideTapeSet = tLeftAndRight; // left and right 
+                                                                              // on outside tape detect line
+  else if(middleFarLeft > 0) outsideTapeSet = tLeft;
+  else if(middleFarRight > 0) outsideTapeSet = tRight;
+  else outsideTapeSet = tNone;
+  
+  // summarize center tape set
+  if(middleCenter > 0 && middleLeft > 0 && middleRight > 0) centerTapeSet = tAll;
+  else if(middleLeft > 0 && middleCenter > 0) centerTapeSet = tLeftAndCenter;
+  else if(middleCenter > 0 && middleRight > 0) centerTapeSet = tCenterAndRight;
+  else if(middleLeft > 0 && middleRight > 0) centerTapeSet = tLeftAndRight;
+  else if(middleLeft > 0) centerTapeSet = tLeft;
+  else if(middleRight > 0) centerTapeSet = tRight;
+  else if(middleCenter > 0) centerTapeSet = tCenter;
+  else centerTapeSet = tNone;
 }
 
 

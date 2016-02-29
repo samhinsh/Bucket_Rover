@@ -273,7 +273,7 @@ void CollectEnvInfo(){
 
 /*----------CollectEnvInfo Helpers----------*/
 
-// Get tape readings for frontRowTape and backRowTape sensor rows
+// Get tape readings for center and outside tape rows
 void ReadTapeSensors(){
   
   // collect individual tape readings
@@ -297,7 +297,7 @@ void ReadTapeSensors(){
   else if(middleLeft > 0 && middleRight > 0) centerTapeSet = tLeftAndRight;
   else if(middleLeft > 0) centerTapeSet = tLeft;
   else if(middleRight > 0) centerTapeSet = tRight;
-  else if(centerTapeSet > 0) centerTapeSet = tCenter;
+  else if(middleCenter > 0) centerTapeSet = tCenter;
   else centerTapeSet = tNone;
 }
 

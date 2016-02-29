@@ -22,14 +22,16 @@
  * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added Rotate()
  * 
  * Todos: 
- * -Redesign initial state-machine (S1)
  * -Formulate beacon-sensing code
  * -Formulate line-following code
  * -Formulate Rotate()
+ * -Test all subsystems 
+ * -Place temporary stops in before reversing motor direction
  */
  
 /*---------------Includes-----------------------------------*/
 #include <Timers.h>
+#include <Servo.h>
 #include "Pulse.h"
 
 /*---------------Module Defines-----------------------------*/
@@ -41,7 +43,8 @@
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED          100
+#define MTR_SPEED_REGULAR  85
+#define MTR_SPEED_FAST     100
 
 // Todo: Decide if multiple speed defines needed
  
@@ -162,11 +165,14 @@ const int middleRightTape = 0;
 const int middleFarLeftTape = 0;
 const int middleFarRightTape = 0;
 const int beaconDetector = 0;       // IR detection circuit
-const int leftMtrDirectionPin = 0;  // motor H-bridge direction pin
-const int rightMtrDirectionPin = 0;
-const int leftMtrStepPin = 0;       // motor H-bridge power pin (pwm)
-const int rightMtrStepPin = 0;
+const int leftMtrDirectionPin = 7;  // motor H-bridge direction pin
+const int rightMtrDirectionPin = 4;
+const int leftMtrEnablePin = 6;       // motor H-bridge power pin (pwm)
+const int rightMtrEnablePin = 5;
 const int LEDpin = 0;               // state indicator LED
+const int servo1Pin = 9;
+const int servo2Pin = 10;
+const int servo3Pin = 11;
 //=======================================================================
 
 //=======================================================================
@@ -177,10 +183,15 @@ TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
 TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
 BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
 BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
+Servo servo1; // arm mechanism 
+Servo servo2; // arm mechanism
+Servo servo3; // arm mechanism
 //=======================================================================
 
 // Initialization (one time, setup) stuff
 void setup() {
+  Serial.begin(9600);
+  
   // Init pins
   
   // inputs
@@ -194,9 +205,19 @@ void setup() {
   // outputs
   pinMode(leftMtrDirectionPin, OUTPUT);
   pinMode(rightMtrDirectionPin, OUTPUT);
-  pinMode(leftMtrStepPin, OUTPUT);
-  pinMode(rightMtrStepPin, OUTPUT);
+  pinMode(leftMtrEnablePin, OUTPUT);
+  pinMode(rightMtrEnablePin, OUTPUT);
   pinMode(LEDpin, OUTPUT);
+  
+  digitalWrite(leftMtrDirectionPin,LOW); // init motors to same direction
+  analogWrite(leftMtrEnablePin,0);
+  
+  digitalWrite(rightMtrDirectionPin,LOW);
+  analogWrite(rightMtrEnablePin,0);
+  
+  servo1.attach(servo1Pin);
+  servo2.attach(servo2Pin);
+  servo3.attach(servo3Pin);
   
   // Init competition timer
   StartTimer(Competition_Timer, TWO_MIN);
@@ -515,12 +536,12 @@ void Rotate(char direction, int speed){
 
 // Set motors to constant forward speed
 void MoveForward(){
-  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+  SetLeftRightMotorSpeed(MTR_SPEED_REGULAR, MTR_SPEED_REGULAR);
 }
 
 // Set motors to constant reverse speed
 void MoveReverse(){
-  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
+  SetLeftRightMotorSpeed(-MTR_SPEED_REGULAR, -MTR_SPEED_REGULAR);
 }
 
 // Stop motors
@@ -539,12 +560,8 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
   digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
   digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
   
-  // set pwm for each motor, and send pulse to pin(s)
-  InitPulse(leftMtrStepPin, map(abs(leftMtrSpeed), 0, 100, 10, 1000));
-  InitPulse(rightMtrStepPin, map(abs(rightMtrSpeed), 0, 100, 10, 1000));
-  if(IsPulseFinished()){
-    Pulse(1); // non-blocking, expect timing to be off (Todo)
-  }
+  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 150));
+  analogWrite(rightMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 150));
 }
 
 // Start specified timer

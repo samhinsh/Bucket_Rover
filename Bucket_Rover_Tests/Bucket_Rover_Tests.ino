@@ -26,11 +26,11 @@
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  85
+#define MTR_SPEED_REGULAR  65
 #define MTR_SPEED_FAST     100
-#define MTR_SPEED          MTR_SPEED_FAST
+#define MTR_SPEED          MTR_SPEED_REGULAR
 #define MTR_STOP_DELAY     1500
-#define NUDGE_REDUCE_CONST_MINOR 5 
+#define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 10
  
 /*---------------Function Prototypes-------------------------*/
@@ -52,6 +52,17 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed);
 
 void StartTimer(int timer, unsigned long time);
 unsigned char IsTimerExpired(int timer);
+
+//=======================================================================
+// State Enumerations - for bot activity at any given time
+
+// Prepended "s" indicates State type variable
+enum State {
+  
+  // TravelToCenterLine sub-routine states
+  sMovingForward, sTurning
+}; 
+//=======================================================================
 
 //=======================================================================
 // Tape Activity Enums - for quick summary of tape row readings
@@ -109,10 +120,10 @@ enum Timer {
 //=======================================================================
 // State and Environment variables
 
+State state = sMovingForward;
 TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
 TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
-BeaconStat beacon_1kHz = bUndetected; // 1kHz beacon detection status
-BeaconStat beacon_5kHz = bUndetected; // 5kHz beacon detection status
+BeaconStat beacon = bUndetected; // 5kHz beacon detection status
 Servo servo1; // arm mechanism 
 Servo servo2; // arm mechanism
 Servo servo3; // arm mechanism
@@ -122,12 +133,12 @@ Servo servo3; // arm mechanism
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int middleCenterTape = A4;     // middle row tape
-const int middleLeftTape = 0;
-const int middleRightTape = 0;
+const int middleCenterTape = 0;     // middle row tape
+const int middleLeftTape = A5;
+const int middleRightTape = A4;
 const int middleFarLeftTape = 0;
 const int middleFarRightTape = 0;
-const int beaconDetector = 0;       // IR detection circuit
+const int beaconDetector = A0;       // IR detection circuit
 const int leftMtrDirectionPin = 7;  // motor H-bridge direction pin
 const int rightMtrDirectionPin = 4;
 const int leftMtrEnablePin = 6;       // motor H-bridge power pin (pwm)
@@ -183,12 +194,54 @@ void setup() {
 }
 
 void loop() {
-  Movement_Test();
+  // TwoSensorLineFollow();
+  ReportBeacon();
 }
 
 
 //=======================================================================
 // Tests
+
+// Line follow using two sensors. Initial state expected to be on line
+void TwoSensorLineFollow(){
+  ReadTapeSensors();
+  Serial.println(centerTapeSet);
+  if (state == sMovingForward){ // in, or leaving MovingForward
+    if(centerTapeSet == tLeft || centerTapeSet == tRight ||
+       centerTapeSet == tLeftAndRight){ // line found
+      state = sTurning; // leave this state, and start turning
+    } else { // otherwise, no line found
+      MoveForward(); // keep moving forward
+    }
+    
+    // in or leaving, sTurning
+  } else if (IsTimerExpired(MotorSpeed_Timer)){ // timer expired, or not init'd
+    if(centerTapeSet == tLeft){
+      state = sTurning;
+      
+      NudgePath('R', rRegular); // move slightly right
+      
+      if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
+        StartTimer(MotorSpeed_Timer, 50);
+      }
+    } else if(centerTapeSet == tRight){
+      state = sTurning;
+      
+      NudgePath('L', rRegular); // move slightly right
+      
+      if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
+        StartTimer(MotorSpeed_Timer, 50);
+      }
+    } else {
+      state = sMovingForward;
+    }
+  }
+}
+
+void ReportBeacon(){
+  Serial.println(beacon);
+  Check5kHzBeaconDetector();
+}
 
 // verify that bot can go from moving forward, to turning slightly
 // Results: pass
@@ -283,48 +336,11 @@ void T_MotorTest_ForwardToReverse(){
 //=======================================================================
 // Functions Needing Testing
 
-// Rotates bot to the left or right slightly, with 2 intensities 
-// Inputs: direction - 'L' or 'R'
-//         speed     -  rRegular (1) or rFast (2)
-void NudgePath(char direction, int speed){
-  // set motor speeds, one slower, one faster
-  // slower motor has two magnitudes of slowness
-  int fasterMtrSpeed = MTR_SPEED;
-  int slowerMtrSpeed = MTR_SPEED - ((speed == rRegular)? 
-                  NUDGE_REDUCE_CONST_MINOR : NUDGE_REDUCE_CONST_MAJOR);
-   
-   // if direction is Left, set right mtr to faster speed
-   if(direction == 'L'){
-     SetLeftRightMotorSpeed(slowerMtrSpeed, fasterMtrSpeed);
-   } else if (direction == 'R'){ // otherwise set left motor to faster speed
-     SetLeftRightMotorSpeed(fasterMtrSpeed, slowerMtrSpeed);
-   }
-}
-
-// Rotate in place (without translating)
-// Results:
-// Review: 
-void RotateInPlace(char direction){
-  if(direction == 'L'){
-    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
-  } else if (direction == 'R'){
-    SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
-  } 
-}
-
-// Get reading from 1kHz beacon-detector circuit
-void Check1kHzBeaconDetector(){
-  // Todo: set beacon pin to 1kHz
-  
-  // on-value inverted (detected shows LOW on circuit), so flip the result
-  !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
-}
-
 // Get reading from 5kHz beacon-detector circuit
 void Check5kHzBeaconDetector(){
   // Todo: set beacon pin to 5kHz
   
-  !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
+  digitalRead(beaconDetector) > 0? beacon = bDetected : beacon = bUndetected;
 }
 
 void FollowLine(){
@@ -417,5 +433,35 @@ void ReadTapeSensors(){
   else if(middleCenter > 0) centerTapeSet = tCenter;
   else centerTapeSet = tNone;
 }
+
+// Rotates bot to the left or right slightly, with 2 intensities 
+// Inputs: direction - 'L' or 'R'
+//         speed     -  rRegular (1) or rFast (2)
+void NudgePath(char direction, int speed){
+  // set motor speeds, one slower, one faster
+  // slower motor has two magnitudes of slowness
+  int fasterMtrSpeed = MTR_SPEED;
+  int slowerMtrSpeed = MTR_SPEED - ((speed == rRegular)? 
+                  NUDGE_REDUCE_CONST_MINOR : NUDGE_REDUCE_CONST_MAJOR);
+   
+   // if direction is Left, set right mtr to faster speed
+   if(direction == 'L'){
+     SetLeftRightMotorSpeed(slowerMtrSpeed, fasterMtrSpeed);
+   } else if (direction == 'R'){ // otherwise set left motor to faster speed
+     SetLeftRightMotorSpeed(fasterMtrSpeed, slowerMtrSpeed);
+   }
+}
+
+// Rotate in place (without translating)
+// Results:
+// Review: 
+void RotateInPlace(char direction){
+  if(direction == 'L'){
+    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
+  } else if (direction == 'R'){
+    SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
+  } 
+}
+
 
 

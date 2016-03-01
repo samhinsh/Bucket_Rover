@@ -19,7 +19,7 @@
  * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
                 abstracted movement fn's, added beacon detection logic,
                 added tape reading logic
- * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added Rotate()
+ * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added RotateInPlace()
  * 
  * Todos: 
  * -Formulate beacon-sensing code
@@ -45,9 +45,11 @@
 #define TWO_MIN            120000
 #define MTR_SPEED_REGULAR  85
 #define MTR_SPEED_FAST     100
+#define MTR_SPEED          MTR_SPEED_REGULAR
+#define MTR_STOP_DELAY     1500
+#define NUDGE_REDUCE_CONST_MINOR 5 
+#define NUDGE_REDUCE_CONST_MAJOR 10
 
-// Todo: Decide if multiple speed defines needed
- 
 /*---------------Function Prototypes-------------------------*/
 
 // Loop Fn's
@@ -74,7 +76,8 @@ void Reload();
 
 // General Helpers
 void FollowLine();
-void Rotate(char direction, int speed);
+void NudgePath(char direction, int speed);
+void RotateInPlace();
 void MoveForward();
 void MoveReverse();
 void StopMoving();
@@ -366,7 +369,7 @@ void FindReloadBeacon(){
   state = sFindingReloadBeacon;
   
   // rotate left at regular speed
-  Rotate('L', rRegular);
+  RotateInPlace('L');
   
   // set timer if not started
   if(IsTimerExpired(Rotate_Timer)){
@@ -379,7 +382,7 @@ void RotateTowardCenterLine(){
   state = sRotatingTowardCenterLine;
   
   // rotate rightward toward center line
-  Rotate('R', rRegular);
+  RotateInPlace('R');
   
   // set timer if not started
   if(IsTimerExpired(CenterLine_Timer)){
@@ -402,7 +405,7 @@ void CenterOnLine(){
   if(centerTapeSet == tLeft){
     MoveForward();
   } else if(centerTapeSet == tLeftAndCenter){
-    Rotate('R', rRegular);
+    RotateInPlace('R');
   }
   
   // Todo: Test if third case (for right tape) is necessary
@@ -526,22 +529,39 @@ void FollowLine(){
   // Implement tape-reading cases and motor turning + timer (?-unsure)
 }
 
-// Rotates bot to the left or right (direction), with one of two speeds 
+// Rotates bot to the left or right slightly, with 2 intensities 
 // Inputs: direction - 'L' or 'R'
 //         speed     -  rRegular (1) or rFast (2)
-void Rotate(char direction, int speed){
-  // Todo: 
-  // Formulate code for wheel speeds
+void NudgePath(char direction, int speed){
+  // set motor speeds
+  int fasterMtrSpeed = MTR_SPEED;
+  int slowerMtrSpeed = MTR_SPEED - (speed == rRegular)? 
+                  NUDGE_REDUCE_CONST_MINOR : NUDGE_REDUCE_CONST_MAJOR;
+                  
+   if(direction == 'L'){
+     SetLeftRightMotorSpeed(slowerMtrSpeed, fasterMtrSpeed);
+   } else if (direction == 'R'){
+     SetLeftRightMotorSpeed(fasterMtrSpeed, slowerMtrSpeed);
+   }
+}
+
+// Rotate in place (without translating)
+void RotateInPlace(char direction){
+  if(direction == 'L'){
+    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
+  } else if (direction == 'R'){
+    SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
+  } 
 }
 
 // Set motors to constant forward speed
 void MoveForward(){
-  SetLeftRightMotorSpeed(MTR_SPEED_REGULAR, MTR_SPEED_REGULAR);
+  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
 }
 
 // Set motors to constant reverse speed
 void MoveReverse(){
-  SetLeftRightMotorSpeed(-MTR_SPEED_REGULAR, -MTR_SPEED_REGULAR);
+  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
 }
 
 // Stop motors
@@ -560,8 +580,8 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
   digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
   digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
   
-  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 150));
-  analogWrite(rightMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 150));
+  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
+  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed), 0, 100, 0, 200));
 }
 
 // Start specified timer

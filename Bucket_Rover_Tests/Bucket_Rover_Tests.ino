@@ -28,7 +28,10 @@
 #define TWO_MIN            120000
 #define MTR_SPEED_REGULAR  85
 #define MTR_SPEED_FAST     100
+#define MTR_SPEED          MTR_SPEED_FAST
 #define MTR_STOP_DELAY     1500
+#define NUDGE_REDUCE_CONST_MINOR 5 
+#define NUDGE_REDUCE_CONST_MAJOR 10
  
 /*---------------Function Prototypes-------------------------*/
 
@@ -79,6 +82,18 @@ enum BeaconStat {
   bDetected,   // signal detected
   bUndetected  // signal undetected
 };
+//=======================================================================
+
+//=======================================================================
+// RotateSpeed Enumerations - for bot speed when correcting orientation during 
+//                      line following
+
+// Prepended "r" indicates RotateSpeed tupe
+enum RotateSpeed {
+  
+  // TravelToCenterLine sub-routine states
+  rRegular, rFast
+}; 
 //=======================================================================
 
 //=======================================================================
@@ -168,108 +183,54 @@ void setup() {
 }
 
 void loop() {
-  ReportTapeSensors();
+  Movement_Test();
 }
 
 
 //=======================================================================
 // Tests
 
+// verify that bot can go from moving forward, to turning slightly
+// Results: pass
+void NudgePath_Test(){
+  MoveForward();
+  Serial.println("Moving Forward");
+  delay(3000);
+  NudgePath('L', rRegular);
+  delay(3000);
+  NudgePath('R', rRegular);
+  delay(3000);
+}
+
+// verify that bot performs basic movements: forward, reverse, turn left, 
+// turn right, stray left, and stray right
+// Results: pass
+void Movement_Test(){
+  MoveForward();
+  delay(5000);
+  StopMoving();
+  delay(MTR_STOP_DELAY);
+  MoveReverse();
+  delay(5000);
+  StopMoving();
+  delay(MTR_STOP_DELAY);
+  RotateInPlace('L');
+  delay(5000);
+  StopMoving();
+  delay(MTR_STOP_DELAY);
+  RotateInPlace('R');
+  delay(5000);
+  StopMoving();
+  delay(MTR_STOP_DELAY);
+  NudgePath_Test();
+}
+
+// check that tape sensor correctly detecting tape and changing 
+// tapeActivity characterization correct 
 void ReportTapeSensors(){
   Serial.println(centerTapeSet);
   ReadTapeSensors();
   
-}
-
-//=======================================================================
-// Functions Needing Testing
-
-// Get reading from 1kHz beacon-detector circuit
-void Check1kHzBeaconDetector(){
-  // Todo: set beacon pin to 1kHz
-  
-  // on-value inverted (detected shows LOW on circuit), so flip the result
-  !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
-}
-
-// Get reading from 5kHz beacon-detector circuit
-void Check5kHzBeaconDetector(){
-  // Todo: set beacon pin to 5kHz
-  
-  !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
-}
-
-void FollowLine(){
-  
-  // Todo:
-  // Implement tape-reading cases and motor turning + timer (?-unsure)
-}
-//=======================================================================
-
-//=======================================================================
-// Functions Successfully Tested
-
-// Set left and right motors to specified speeds
-// Acceptable -100 <= MtrSpeed <= 100
-// Flips the motor's direction if  MtrSpeed < 0
-// Results: Pass
-// Review: setting MtrDirectionPin's to HIGH is Forward, LOW is reverse
-//         analogWrite is sufficient for running motors, Pulse library not needed
-void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
-  // Todo:
-  // Orient/fix code for operating motor (below)
-  
-  // set direction of motor based on sign of MtrSpeed var(s)
-  digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
-  digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
-  
-  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
-  analogWrite(rightMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
-}
-
-// Start specified timer
-// Results: pass
-void StartTimer(int timer, unsigned long time){
-  TMRArd_InitTimer(timer, time);
-}
-
-// Return whether specified timer has expired or not
-// Results: pass
-// Review: incorporate IsTimerExpired 
-unsigned char IsTimerExpired(int timer){
-  return (unsigned char)(TMRArd_IsTimerExpired(timer));
-}
-
-// check that the motor can move from forward to reverse
-// Results: pass
-// Review: make sure to stop motor before reversing direction (don't go
-//         directly from forward to reverse
-void T_MotorTest_ForwardToReverse(){
-  static int mtrSpeed = MTR_SPEED_REGULAR;
-  SetLeftRightMotorSpeed(mtrSpeed, mtrSpeed);
-  if(IsTimerExpired(MotorSpeed_Timer)){
-    StartTimer(MotorSpeed_Timer, THREE_SEC);
-    SetLeftRightMotorSpeed(0, 0);
-    mtrSpeed = -mtrSpeed; 
-  }
-}
-
-// Set motors to constant forward speed
-// Result: pass
-void MoveForward(){
-  SetLeftRightMotorSpeed(MTR_SPEED_REGULAR, MTR_SPEED_REGULAR);
-}
-
-// Set motors to constant reverse speed
-// Result: pass
-void MoveReverse(){
-  SetLeftRightMotorSpeed(-MTR_SPEED_REGULAR, -MTR_SPEED_REGULAR);
-}
-
-// Stop motors
-// Result: pass
-void StopMoving(){
-  SetLeftRightMotorSpeed(0, 0);
 }
 
 // check that the motor can successfully change speeds through a range using pwm
@@ -303,6 +264,128 @@ void T_MotorTest_Forward(){
   
   // Send motor speed to motor
   SetLeftRightMotorSpeed(leftMtrSpeed, rightMtrSpeed);
+}
+  
+// check that the motor can move from forward to reverse
+// Results: pass
+// Review: make sure to stop motor before reversing direction (don't go
+//         directly from forward to reverse
+void T_MotorTest_ForwardToReverse(){
+  static int mtrSpeed = MTR_SPEED;
+  SetLeftRightMotorSpeed(mtrSpeed, mtrSpeed);
+  if(IsTimerExpired(MotorSpeed_Timer)){
+    StartTimer(MotorSpeed_Timer, THREE_SEC);
+    SetLeftRightMotorSpeed(0, 0);
+    mtrSpeed = -mtrSpeed; 
+  }
+}
+
+//=======================================================================
+// Functions Needing Testing
+
+// Rotates bot to the left or right slightly, with 2 intensities 
+// Inputs: direction - 'L' or 'R'
+//         speed     -  rRegular (1) or rFast (2)
+void NudgePath(char direction, int speed){
+  // set motor speeds, one slower, one faster
+  // slower motor has two magnitudes of slowness
+  int fasterMtrSpeed = MTR_SPEED;
+  int slowerMtrSpeed = MTR_SPEED - ((speed == rRegular)? 
+                  NUDGE_REDUCE_CONST_MINOR : NUDGE_REDUCE_CONST_MAJOR);
+   
+   // if direction is Left, set right mtr to faster speed
+   if(direction == 'L'){
+     SetLeftRightMotorSpeed(slowerMtrSpeed, fasterMtrSpeed);
+   } else if (direction == 'R'){ // otherwise set left motor to faster speed
+     SetLeftRightMotorSpeed(fasterMtrSpeed, slowerMtrSpeed);
+   }
+}
+
+// Rotate in place (without translating)
+// Results:
+// Review: 
+void RotateInPlace(char direction){
+  if(direction == 'L'){
+    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
+  } else if (direction == 'R'){
+    SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
+  } 
+}
+
+// Get reading from 1kHz beacon-detector circuit
+void Check1kHzBeaconDetector(){
+  // Todo: set beacon pin to 1kHz
+  
+  // on-value inverted (detected shows LOW on circuit), so flip the result
+  !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
+}
+
+// Get reading from 5kHz beacon-detector circuit
+void Check5kHzBeaconDetector(){
+  // Todo: set beacon pin to 5kHz
+  
+  !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
+}
+
+void FollowLine(){
+  
+  // Todo:
+  // Implement tape-reading cases and motor turning + timer (?-unsure)
+}
+
+
+//=======================================================================
+
+//=======================================================================
+// Functions Successfully Tested
+
+// Set left and right motors to specified speeds
+// Acceptable -100 <= MtrSpeed <= 100
+// Flips the motor's direction if  MtrSpeed < 0
+// Results: Pass
+// Review: setting MtrDirectionPin's to HIGH is Forward, LOW is reverse
+//         analogWrite is sufficient for running motors, Pulse library not needed
+void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
+  // Todo:
+  // Orient/fix code for operating motor (below)
+  
+  // set direction of motor based on sign of MtrSpeed var(s)
+  digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
+  digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
+  
+  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
+  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed), 0, 100, 0, 200));
+}
+
+// Start specified timer
+// Results: pass
+void StartTimer(int timer, unsigned long time){
+  TMRArd_InitTimer(timer, time);
+}
+
+// Return whether specified timer has expired or not
+// Results: pass
+// Review: incorporate IsTimerExpired 
+unsigned char IsTimerExpired(int timer){
+  return (unsigned char)(TMRArd_IsTimerExpired(timer));
+}
+
+// Set motors to constant forward speed
+// Result: pass
+void MoveForward(){
+  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+}
+
+// Set motors to constant reverse speed
+// Result: pass
+void MoveReverse(){
+  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
+}
+
+// Stop motors
+// Result: pass
+void StopMoving(){
+  SetLeftRightMotorSpeed(0, 0);
 }
 
 // Get tape readings for frontRowTape and backRowTape sensor rows

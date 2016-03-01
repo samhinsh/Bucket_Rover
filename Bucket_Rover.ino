@@ -17,16 +17,14 @@
  * Tue Feb 23 - Initial code and comments
  * Wed Feb 24 - Added enums, defines, and CollectEnvInfo helpers
  * Thu Feb 25 - Added function prototypes, fleshed out DropOffTokensThenReload(),
-                abstracted movement fn's, added beacon detection logic,
-                added tape reading logic
- * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added RotateInPlace()
+ *              abstracted movement fn's, added beacon detection logic,
+ *              added tape reading logic
+ * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added RotateInPlace(),
+ *              performed testing on movement fns, beacon detection, and line following
  * 
  * Todos: 
- * -Formulate beacon-sensing code
  * -Formulate line-following code
- * -Formulate Rotate()
  * -Test all subsystems 
- * -Place temporary stops in before reversing motor direction
  */
  
 /*---------------Includes-----------------------------------*/
@@ -37,7 +35,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define HALF_SEC           500
+#define CENTERFIND_TIME    500
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -46,8 +44,8 @@
 #define MTR_SPEED_REGULAR  85
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
-#define MTR_STOP_DELAY     1500
-#define NUDGE_REDUCE_CONST_MINOR 5 
+#define MTR_STOP_DELAY     800
+#define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 10
 
 /*---------------Function Prototypes-------------------------*/

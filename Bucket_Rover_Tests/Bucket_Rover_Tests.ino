@@ -21,12 +21,13 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
+#define CENTERFIND_TIME    500
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  65
+#define MTR_SPEED_REGULAR  85
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define MTR_STOP_DELAY     800
@@ -60,7 +61,8 @@ unsigned char IsTimerExpired(int timer);
 enum State {
   
   // TravelToCenterLine sub-routine states
-  sMovingForward, sTurning
+  sMovingForward, sTurning, 
+  sFindingReloadBeacon, sRotatingTowardCenterLine
 }; 
 //=======================================================================
 
@@ -114,13 +116,15 @@ enum RotateSpeed {
 enum Timer {
   
   MotorSpeed_Timer, // timer between changing the speed of the motor
+  CenterLine_Timer,
+  Rotate_Timer,
 };
 //=======================================================================
 
 //=======================================================================
 // State and Environment variables
 
-State state = sMovingForward;
+State state = sFindingReloadBeacon;
 TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
 TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
 BeaconStat beacon = bUndetected; // 5kHz beacon detection status
@@ -194,7 +198,40 @@ void setup() {
 }
 
 void loop() {
-  // TwoSensorLineFollow();
+  
+  CollectEnvInfo();
+  Serial.println(digitalRead(beaconDetector));
+  // if S1
+  if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine){  
+    
+    // in, or leaving sFindingReloadBeacon
+    if(state == sFindingReloadBeacon){
+      if(beacon == bUndetected){ // beacon undetected
+        if(IsTimerExpired(Rotate_Timer)){ // wait for timer, to rotate again
+          FindReloadBeacon();
+        }
+      } else {
+        RotateTowardCenterLine(); // otherwise, move toward center
+      }
+    }
+    
+    // in, or leaving sRotatingTowardCenterLine
+    else if(state == sRotatingTowardCenterLine){
+      if(!IsTimerExpired(CenterLine_Timer)){ // continue rotating toward line if timer still going
+        RotateTowardCenterLine();
+      } else StopMoving(); //GoToCenterLine(); // otherwise, head to center line
+    }
+    
+  }
+  
+}
+
+
+//=======================================================================
+// Tests
+
+// verify bot can find the reload beacon and stop while facing it
+void FindReloadBeacon_Test(){
   ReportBeacon();
   
   if(beacon == bUndetected){ // beacon undetected
@@ -206,14 +243,10 @@ void loop() {
         StartTimer(MotorSpeed_Timer, 50);
       }
     }
-  }   else {
+  } else {
     StopMoving();
   }
 }
-
-
-//=======================================================================
-// Tests
 
 // Line follow using two sensors. Initial state expected to be on line
 void TwoSensorLineFollow(){
@@ -349,11 +382,34 @@ void T_MotorTest_ForwardToReverse(){
 //=======================================================================
 // Functions Needing Testing
 
-// Get reading from 5kHz beacon-detector circuit
-void Check5kHzBeaconDetector(){
-  // Todo: set beacon pin to 5kHz
+void CollectEnvInfo(){
+  ReadTapeSensors();
+  Check5kHzBeaconDetector();
+}
+
+void FindReloadBeacon(){
+  state = sFindingReloadBeacon;
+      
+  RotateInPlace('L');
+  // set timer if not started
+  if(IsTimerExpired(Rotate_Timer)){
+    StartTimer(Rotate_Timer, 50);
+  }
+}
+
+// Rotate predetermined amount (using CenterLine_Timer) toward center line
+void RotateTowardCenterLine(){
+  state = sRotatingTowardCenterLine;
   
-  digitalRead(beaconDetector) > 0? beacon = bUndetected : beacon = bDetected;
+  // rotate rightward toward center line
+  RotateInPlace('R');
+  
+  // set timer if not started
+  if(IsTimerExpired(CenterLine_Timer)){
+    StartTimer(CenterLine_Timer, CENTERFIND_TIME);
+    
+    // Todo: Fix timing^ based on wheel speed at beacon-detection range
+  }
 }
 
 
@@ -468,6 +524,11 @@ void RotateInPlace(char direction){
   } else if (direction == 'R'){
     SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
   } 
+}
+
+// Get reading from 5kHz beacon-detector circuit
+void Check5kHzBeaconDetector(){
+  digitalRead(beaconDetector) > 0? beacon = bUndetected : beacon = bDetected;
 }
 
 

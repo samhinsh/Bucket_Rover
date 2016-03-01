@@ -373,7 +373,7 @@ void FindReloadBeacon(){
   
   // set timer if not started
   if(IsTimerExpired(Rotate_Timer)){
-    StartTimer(Rotate_Timer, HALF_SEC);
+    StartTimer(Rotate_Timer, 50);
   }
 }
 

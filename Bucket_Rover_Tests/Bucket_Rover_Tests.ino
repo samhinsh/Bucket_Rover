@@ -29,7 +29,7 @@
 #define MTR_SPEED_REGULAR  65
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
-#define MTR_STOP_DELAY     1500
+#define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 10
  
@@ -90,8 +90,8 @@ enum TapeActivity {
 // Indicates detection of beacon or not
 enum BeaconStat {
   
-  bDetected,   // signal detected
-  bUndetected  // signal undetected
+  bUndetected = 0, // signal undetected
+  bDetected = 1   // signal detected
 };
 //=======================================================================
 
@@ -196,6 +196,19 @@ void setup() {
 void loop() {
   // TwoSensorLineFollow();
   ReportBeacon();
+  
+  if(beacon == bUndetected){ // beacon undetected
+    if(IsTimerExpired(MotorSpeed_Timer)){ // wait for timer, to rotate again
+      
+      RotateInPlace('L');
+      // set timer if not started
+      if(IsTimerExpired(MotorSpeed_Timer)){
+        StartTimer(MotorSpeed_Timer, 50);
+      }
+    }
+  }   else {
+    StopMoving();
+  }
 }
 
 
@@ -340,13 +353,7 @@ void T_MotorTest_ForwardToReverse(){
 void Check5kHzBeaconDetector(){
   // Todo: set beacon pin to 5kHz
   
-  digitalRead(beaconDetector) > 0? beacon = bDetected : beacon = bUndetected;
-}
-
-void FollowLine(){
-  
-  // Todo:
-  // Implement tape-reading cases and motor turning + timer (?-unsure)
+  digitalRead(beaconDetector) > 0? beacon = bUndetected : beacon = bDetected;
 }
 
 

@@ -21,13 +21,13 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    500
+#define CENTERFIND_TIME    1000
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  85
+#define MTR_SPEED_REGULAR  70
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define MTR_STOP_DELAY     800
@@ -200,18 +200,26 @@ void setup() {
 void loop() {
   
   CollectEnvInfo();
-
+  Serial.print("Tape: ");
+  Serial.println(centerTapeSet);
+  Serial.print("State: ");
+  Serial.println(state);
+  Serial.print("Beacon: ");
+  Serial.println(digitalRead(beaconDetector));
+  
   // if S1
   if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine){  
     
     // in, or leaving sFindingReloadBeacon
     if(state == sFindingReloadBeacon){
       if(beacon == bUndetected){ // beacon undetected
-        if(IsTimerExpired(Rotate_Timer)){ // wait for timer, to rotate again
           FindReloadBeacon();
-        }
       } else {
-        RotateTowardCenterLine(); // otherwise, move toward center
+        RotateInPlace('R'); // experiment
+        delay(50); // experiment
+        StopMoving(); // experiment
+        delay(500); // experiment
+        RotateTowardCenterLine(); // otherwise, move toward center, change state
       }
     }
     
@@ -219,14 +227,20 @@ void loop() {
     else if(state == sRotatingTowardCenterLine){
       if(!IsTimerExpired(CenterLine_Timer)){ // continue rotating toward line if timer still going
         RotateTowardCenterLine();
-      } else GoToCenterLine(); // otherwise, head to center line
+      } else {
+        RotateInPlace('L'); // experiment
+        delay(50); // experiment
+        StopMoving(); // experiment
+        delay(500); // experiment
+        GoToCenterLine();
+      } // otherwise, head to center line
     }
     
     // in, or leaving sGoingToCenterLine
     else if(state == sGoingToCenterLine){
-      if(centerTapeSet == tLeft || 
+      if(!(centerTapeSet == tLeft || 
         centerTapeSet == tRight || 
-        centerTapeSet == tLeftAndRight){ // no line found
+        centerTapeSet == tLeftAndRight)){ // no line found
         GoToCenterLine();
       } else StopMoving(); // CenterOnLine(); // center on line that was found (namely, the center line)
     } 
@@ -234,6 +248,83 @@ void loop() {
   }
 }
 
+//=======================================================================
+// Functions Needing Testing
+
+void MoveForward_Fast(){
+  SetLeftRightMotorSpeed(MTR_SPEED_FAST, MTR_SPEED_FAST);
+}
+
+// verify that the bot can correctly identify the 5kHz reload beacon
+// Results: pass
+// Review: bot can pretty accurately detect the reload station on slow and high speeds
+void FindReloadBeacon(){
+  state = sFindingReloadBeacon;
+      
+  RotateInPlace('L');
+  /*
+  // set timer if not started
+  if(IsTimerExpired(Rotate_Timer)){
+    StartTimer(Rotate_Timer, 800);
+    RotateInPlace('R'); // experiment
+    delay(50); // experiment
+    StopMoving();
+    delay(500);
+  }*/
+}
+
+// Rotate predetermined amount (using CenterLine_Timer) toward center line
+// Results: fail
+// Review: motors stall when StopMoving is called after rotating. On rotating toward
+//         line, circumference of rotation is highly inconsistent. Considering removing
+//         StopMoving afterward, and/or breaking up rotation into start-stop chunks
+void RotateTowardCenterLine(){
+  state = sRotatingTowardCenterLine;
+  
+  // rotate rightward toward center line
+  RotateInPlace('R');
+  
+  // set timer if not started
+  if(IsTimerExpired(CenterLine_Timer)){
+    StartTimer(CenterLine_Timer, CENTERFIND_TIME);
+    // Todo: Fix timing^ based on wheel speed at beacon-detection range
+  }
+  
+  /*
+  if(IsTimerExpired(Rotate_Timer)){
+    StartTimer(Rotate_Timer, 800);
+    RotateInPlace('L'); // experiment
+    delay(50); // experiment
+    StopMoving(); // experiment
+    delay(500); // experiment
+  } */
+}
+
+// Move forward until hitting center line
+// Results: undetermined
+// Review: NA
+void GoToCenterLine(){
+  state = sGoingToCenterLine;
+  MoveForward_Fast();
+}
+
+// Set left and right motors to specified speeds
+// Acceptable -100 <= MtrSpeed <= 100
+// Flips the motor's direction if  MtrSpeed < 0
+// Results: Pass
+// Review: setting MtrDirectionPin's to HIGH is Forward, LOW is reverse
+//         analogWrite is sufficient for running motors, Pulse library not needed
+void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
+  // Todo:
+  // Orient/fix code for operating motor (below)
+  
+  // set direction of motor based on sign of MtrSpeed var(s)
+  digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
+  digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
+  
+  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
+  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed) + 12, 0, 100, 0, 200));
+}
 
 //=======================================================================
 // Tests
@@ -388,58 +479,9 @@ void T_MotorTest_ForwardToReverse(){
 }
 
 //=======================================================================
-// Functions Needing Testing
-
-// Rotate predetermined amount (using CenterLine_Timer) toward center line
-// Results: fail
-// Review: motors stall when StopMoving is called after rotating. On rotating toward
-//         line, circumference of rotation is highly inconsistent. Considering removing
-//         StopMoving afterward, and/or breaking up rotation into start-stop chunks
-void RotateTowardCenterLine(){
-  state = sRotatingTowardCenterLine;
-  
-  // rotate rightward toward center line
-  RotateInPlace('R');
-  
-  // set timer if not started
-  if(IsTimerExpired(CenterLine_Timer)){
-    StartTimer(CenterLine_Timer, CENTERFIND_TIME);
-    
-    // Todo: Fix timing^ based on wheel speed at beacon-detection range
-  }
-}
-
-// Move forward until hitting center line
-// Results: undetermined
-// Review: NA
-void GoToCenterLine(){
-  state = sGoingToCenterLine;
-  MoveForward();
-}
-
-
-//=======================================================================
 
 //=======================================================================
 // Functions Successfully Tested
-
-// Set left and right motors to specified speeds
-// Acceptable -100 <= MtrSpeed <= 100
-// Flips the motor's direction if  MtrSpeed < 0
-// Results: Pass
-// Review: setting MtrDirectionPin's to HIGH is Forward, LOW is reverse
-//         analogWrite is sufficient for running motors, Pulse library not needed
-void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
-  // Todo:
-  // Orient/fix code for operating motor (below)
-  
-  // set direction of motor based on sign of MtrSpeed var(s)
-  digitalWrite(leftMtrDirectionPin, (leftMtrSpeed) >= 0? HIGH : LOW );
-  digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
-  
-  analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
-  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed), 0, 100, 0, 200));
-}
 
 // Start specified timer
 // Results: pass
@@ -536,19 +578,6 @@ void RotateInPlace(char direction){
 // Review: Better results on botton level of bot
 void Check5kHzBeaconDetector(){
   digitalRead(beaconDetector) > 0? beacon = bUndetected : beacon = bDetected;
-}
-
-// verify that the bot can correctly identify the 5kHz reload beacon
-// Results: pass
-// Review: bot can pretty accurately detect the reload station on slow and high speeds
-void FindReloadBeacon(){
-  state = sFindingReloadBeacon;
-      
-  RotateInPlace('L');
-  // set timer if not started
-  if(IsTimerExpired(Rotate_Timer)){
-    StartTimer(Rotate_Timer, 50);
-  }
 }
 
 // verify device can collect tape readings and characterize them, then read the

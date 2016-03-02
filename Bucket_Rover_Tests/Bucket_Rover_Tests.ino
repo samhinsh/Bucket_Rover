@@ -219,7 +219,7 @@ void loop() {
   
   // if S1
   if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine || 
-     state == sGoingToCenterLine || state == sStopped || state == sCenteringOnLine){ 
+     state == sGoingToCenterLine || state == sCenteringOnLine){ 
     TravelToCenterLine();
   } 
   

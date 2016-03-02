@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    700 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    800 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -34,7 +34,7 @@
 #define CENTERONLINE_TIME  1100
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
-#define NUDGE_REDUCE_CONST_MAJOR 10
+#define NUDGE_REDUCE_CONST_MAJOR 70
  
 /*---------------Function Prototypes-------------------------*/
 
@@ -230,6 +230,7 @@ void loop() {
       delay(COMPLETE_STOP);
       StopMoving();
       delay(500);
+      Serial.println("Dropping off tokens!");
       DropOffTokens(); // start dropping off tokens
       state = sStopped;
     } else { // not in front of buckets, keep going to bucket
@@ -444,6 +445,42 @@ void FindReloadBeacon_Test(){
 
 // Line follow using two sensors. Initial state expected to be on line
 void TwoSensorLineFollow(){
+  static int lineFollowState = 0; // 0 - movingForward, 1 - sTurning
+  
+  ReadTapeSensors();
+  Serial.println(centerTapeSet);
+  if (lineFollowState == 0){ // in, or leaving MovingForward
+    if(centerTapeSet == tLeft || centerTapeSet == tRight){ // line found
+      lineFollowState = 1; // leave this state, and start turning
+    } else { // otherwise, no line found
+      MoveForward(); // keep moving forward
+    }
+    
+    // in or leaving, sTurning
+  } else if (IsTimerExpired(MotorSpeed_Timer)){ // timer expired, or not init'd
+    if(centerTapeSet == tLeft){
+      lineFollowState = 1;
+      
+      NudgePath('R', rRegular); // move slightly right
+      
+      if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
+        StartTimer(MotorSpeed_Timer, 50);
+      }
+    } else if(centerTapeSet == tRight){
+      lineFollowState = 1;
+      
+      NudgePath('L', rRegular); // move slightly right
+      
+      if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
+        StartTimer(MotorSpeed_Timer, 50);
+      }
+    } else {
+      lineFollowState = 0;
+    }
+  }
+}
+
+void TwoSensorLineFollow_Alternate(){
   ReadTapeSensors();
   Serial.println(centerTapeSet);
   if (state == sMovingForward){ // in, or leaving MovingForward
@@ -458,7 +495,7 @@ void TwoSensorLineFollow(){
     if(centerTapeSet == tLeft){
       state = sTurning;
       
-      NudgePath('R', rRegular); // move slightly right
+      NudgePath('L', rFast); // move slightly right
       
       if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
         StartTimer(MotorSpeed_Timer, 50);
@@ -466,7 +503,7 @@ void TwoSensorLineFollow(){
     } else if(centerTapeSet == tRight){
       state = sTurning;
       
-      NudgePath('L', rRegular); // move slightly right
+      NudgePath('R', rFast); // move slightly right
       
       if(IsTimerExpired(MotorSpeed_Timer)){ // start timer
         StartTimer(MotorSpeed_Timer, 50);

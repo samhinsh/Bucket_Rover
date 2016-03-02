@@ -67,7 +67,7 @@ enum State {
   sFindingReloadBeacon, sRotatingTowardCenterLine, sGoingToCenterLine, sStopped,
   sCenteringOnLine,
   
-  sGoingToBucket
+  sGoingToBucket, sDroppingOffTokens
 }; 
 //=======================================================================
 
@@ -200,27 +200,15 @@ void setup() {
   servo2.attach(servo2Pin);
   servo3.attach(servo3Pin);
   
+  servo1.write(0);   // initial (compact) position
+  servo2.write(180); // initial (compact) position
+  servo3.write(0);   // initial (compact) position
+  
 }
 
 void loop() {
   // TwoSensorLineFollow();
   
-//  servo1.write(0);
-//  servo3.write(0);
-  
-  servo1.write(120);
-  servo2.write(60);
-  servo3.write(120);
-  
-  delay(3000);
-  
-  servo1.write(0);
-  servo2.write(180);
-  servo3.write(0);
-  
-  delay(3000);
-  
-  /*
   CollectEnvInfo();
   Serial.print("Tape: ");
   Serial.println(centerTapeSet);
@@ -236,7 +224,7 @@ void loop() {
   } 
   
   // if S2
-  else if(state == sGoingToBucket || state = sDroppingOffTokens){
+  else if(state == sGoingToBucket || state == sDroppingOffTokens){
     if(centerTapeSet == tLeftAndRight){ // middleRowTape sitting on crossroad
       MoveReverse();
       delay(COMPLETE_STOP);
@@ -248,7 +236,6 @@ void loop() {
       GoToBucket(); // move forward to bucket (line follow)
     }
   }
-  */
   
 }
 
@@ -268,11 +255,17 @@ void GoToBucket(){
 }
 
 void DropOffTokens(){
-  for (int pos = 0; pos <= 115; pos += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    servo1.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);                       // waits 15ms for the servo to reach the position
-  }
+  servo1.write(120); // full position
+  servo2.write(60);  // full position
+  servo3.write(120); // full position
+  
+  delay(2000);
+  
+  servo1.write(0);   // initial (compact) position
+  servo2.write(180); // initial (compact) position
+  servo3.write(0);   // initial (compact) position
+  
+  delay(3000);
 }
 
 void TravelToCenterLine(){ 

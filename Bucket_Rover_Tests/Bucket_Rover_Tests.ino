@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    1000
+#define CENTERFIND_TIME    650 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -30,6 +30,7 @@
 #define MTR_SPEED_REGULAR  70
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
+#define COMPLETE_STOP      200
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 10
@@ -216,7 +217,7 @@ void loop() {
           FindReloadBeacon();
       } else {
         RotateInPlace('R'); // experiment
-        delay(50); // experiment
+        delay(COMPLETE_STOP); // experiment
         StopMoving(); // experiment
         delay(500); // experiment
         RotateTowardCenterLine(); // otherwise, move toward center, change state
@@ -229,7 +230,7 @@ void loop() {
         RotateTowardCenterLine();
       } else {
         RotateInPlace('L'); // experiment
-        delay(50); // experiment
+        delay(COMPLETE_STOP); // experiment
         StopMoving(); // experiment
         delay(500); // experiment
         GoToCenterLine();

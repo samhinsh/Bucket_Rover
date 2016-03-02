@@ -63,7 +63,7 @@ enum State {
   
   // TravelToCenterLine sub-routine states
   sMovingForward, sTurning, 
-  sFindingReloadBeacon, sRotatingTowardCenterLine, sGoingToCenterLine
+  sFindingReloadBeacon, sRotatingTowardCenterLine, sGoingToCenterLine, sStopped
 }; 
 //=======================================================================
 
@@ -199,6 +199,8 @@ void setup() {
 }
 
 void loop() {
+  // TwoSensorLineFollow();
+  
   
   CollectEnvInfo();
   Serial.print("Tape: ");
@@ -208,8 +210,10 @@ void loop() {
   Serial.print("Beacon: ");
   Serial.println(digitalRead(beaconDetector));
   
+  
   // if S1
-  if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine){  
+  if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine || 
+     state == sGoingToCenterLine || state == sStopped){  
     
     // in, or leaving sFindingReloadBeacon
     if(state == sFindingReloadBeacon){
@@ -239,11 +243,15 @@ void loop() {
     
     // in, or leaving sGoingToCenterLine
     else if(state == sGoingToCenterLine){
-      if(!(centerTapeSet == tLeft || 
+      if(centerTapeSet == tLeft || 
         centerTapeSet == tRight || 
-        centerTapeSet == tLeftAndRight)){ // no line found
-        GoToCenterLine();
-      } else StopMoving(); // CenterOnLine(); // center on line that was found (namely, the center line)
+        centerTapeSet == tLeftAndRight){ // line found
+        MoveReverse();
+        delay(COMPLETE_STOP);
+        StopMoving(); //CenterOnLine();
+        delay(500); // remove after changing above line
+        state = sStopped; // remove as well
+      } else GoToCenterLine(); // center on line that was found (namely, the center line)
     } 
     
   }
@@ -353,8 +361,7 @@ void TwoSensorLineFollow(){
   ReadTapeSensors();
   Serial.println(centerTapeSet);
   if (state == sMovingForward){ // in, or leaving MovingForward
-    if(centerTapeSet == tLeft || centerTapeSet == tRight ||
-       centerTapeSet == tLeftAndRight){ // line found
+    if(centerTapeSet == tLeft || centerTapeSet == tRight){ // line found
       state = sTurning; // leave this state, and start turning
     } else { // otherwise, no line found
       MoveForward(); // keep moving forward

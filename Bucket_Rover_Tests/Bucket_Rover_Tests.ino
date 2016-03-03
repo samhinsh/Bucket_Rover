@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    800 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    600 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -31,7 +31,7 @@
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      200  // was using 200
-#define CENTERONLINE_TIME  1100
+#define CENTERONLINE_TIME  1000
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 70
@@ -63,11 +63,11 @@ unsigned char IsTimerExpired(int timer);
 enum State {
   
   // TravelToCenterLine sub-routine states
-  sMovingForward, sTurning, 
-  sFindingReloadBeacon, sRotatingTowardCenterLine, sGoingToCenterLine, sStopped,
-  sCenteringOnLine,
+  sMovingForward = 0, sTurning = 1, 
+  sFindingReloadBeacon = 2, sRotatingTowardCenterLine = 3, sGoingToCenterLine = 4, sStopped = 5,
+  sCenteringOnLine = 6,
   
-  sGoingToBucket, sDroppingOffTokens
+  sGoingToBucket = 7, sDroppingOffTokens = 8, sBackingUpToReload = 9
 }; 
 //=======================================================================
 
@@ -123,6 +123,7 @@ enum Timer {
   MotorSpeed_Timer, // timer between changing the speed of the motor
   CenterLine_Timer,
   Rotate_Timer,
+  DropOff_Timer
 };
 //=======================================================================
 
@@ -204,17 +205,27 @@ void setup() {
   servo2.write(180); // initial (compact) position
   servo3.write(0);   // initial (compact) position
   
+  delay(1000);
+  
+  servo1.detach();
+  servo2.detach();
+  servo3.detach();
+  
 }
 
 void loop() {
+  
   // TwoSensorLineFollow();
   
   CollectEnvInfo();
-  Serial.print("Tape: ");
+  Serial.print("Tape: "); 
   Serial.println(centerTapeSet);
   Serial.print("State: ");
   Serial.println(state);
-  Serial.print("Beacon: ");
+  Serial.print("Beacon state: ");
+  Serial.println(beacon);
+  
+  Serial.print("Beacon pin: ");
   Serial.println(digitalRead(beaconDetector));
   
   // if S1
@@ -224,24 +235,65 @@ void loop() {
   } 
   
   // if S2
-  else if(state == sGoingToBucket || state == sDroppingOffTokens){
-    if(centerTapeSet == tLeftAndRight){ // middleRowTape sitting on crossroad
-      MoveReverse();
-      delay(COMPLETE_STOP);
-      StopMoving();
-      delay(500);
-      Serial.println("Dropping off tokens!");
-      DropOffTokens(); // start dropping off tokens
-      state = sStopped;
-    } else { // not in front of buckets, keep going to bucket
-      GoToBucket(); // move forward to bucket (line follow)
+  else if(state == sGoingToBucket || state == sDroppingOffTokens ||
+          state == sBackingUpToReload){
+    
+    // in, or leaving sGoingToBucket
+    if(state == sGoingToBucket){
+      if(centerTapeSet == tLeftAndRight){ // middleRowTape sitting on bucket crossroad
+        MoveReverse();
+        delay(COMPLETE_STOP);
+        StopMoving();
+        delay(500);
+        Serial.println("Dropping off tokens!");
+        DropOffTokens(); // start dropping off tokens
+        state = sBackingUpToReload;
+      } else { // not in front of buckets, keep going to bucket
+        GoToBucket(); // move forward to bucket (line follow)
+      }
     }
+    
+    // in, or leaving sDroppingOffTokens
+    else if(state == sDroppingOffTokens){
+      if(IsTimerExpired(DropOff_Timer)){ // done dropping off tokens (timer expired)
+        // move on to sBackingUpToReload
+        state = sStopped; // BackupToReloadStation();
+      }  
+      // otherwise, continue dropping off tokens (implicitly)
+      else DropOffTokens();
+      MoveReverse(); // exp
+      delay(1000);
+    }
+    
+    // in, or leaving sBackingUpToReloadStation (Todo)
+    else if(state == sBackingUpToReload){
+      if(centerTapeSet == tLeftAndRight){ // hit the reload crossroad from behind
+        MoveForward();
+        delay(COMPLETE_STOP);
+        StopMoving();
+        delay(500); // Reload();
+        state = sStopped;
+      }
+      // otherwise, continue backing up (implictly)
+      else BackupToReloadStation();
+    }
+    
+    // in, or leaving sReloading (Todo)
   }
   
 }
 
 //=======================================================================
 // Functions Needing Testing
+
+// Back the bot up to the reload station
+void BackupToReloadStation(){
+  state = sBackingUpToReload;
+  // change LED indicator
+  
+  // reverse motors for backing up (no line following)
+  MoveReverse();
+}
 
 void GoToBucket(){
   state = sGoingToBucket;
@@ -256,6 +308,10 @@ void GoToBucket(){
 }
 
 void DropOffTokens(){
+  servo1.attach(servo1Pin);
+  servo2.attach(servo2Pin);
+  servo3.attach(servo3Pin);
+  
   servo1.write(120); // full position
   servo2.write(60);  // full position
   servo3.write(120); // full position
@@ -267,6 +323,10 @@ void DropOffTokens(){
   servo3.write(0);   // initial (compact) position
   
   delay(3000);
+  
+  servo1.detach();
+  servo2.detach();
+  servo3.detach();
 }
 
 void TravelToCenterLine(){ 

@@ -27,7 +27,7 @@
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  70
+#define MTR_SPEED_REGULAR  51
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      200  // was using 200
@@ -123,7 +123,8 @@ enum Timer {
   MotorSpeed_Timer, // timer between changing the speed of the motor
   CenterLine_Timer,
   Rotate_Timer,
-  DropOff_Timer
+  DropOff_Timer,
+  Init_Timer
 };
 //=======================================================================
 
@@ -211,21 +212,30 @@ void setup() {
   servo2.detach();
   servo3.detach();
   
+  if(IsTimerExpired(Init_Timer)){
+     StartTimer(Init_Timer, 500);    
+  }
+  
 }
 
 void loop() {
   
   // TwoSensorLineFollow();
   CollectEnvInfo();
-  Serial.print("Tape: "); 
-  Serial.println(centerTapeSet);
-  Serial.print("State: ");
-  Serial.println(state);
-  Serial.print("Beacon state: ");
-  Serial.println(beacon);
+  
+  
+//  Serial.print("Tape: "); 
+//  Serial.println(centerTapeSet);
+//  Serial.print("State: ");
+//  Serial.println(state);
+//  Serial.print("Beacon state: ");
+//  Serial.println(beacon);
+  
   
   Serial.print("Beacon pin: ");
   Serial.println(digitalRead(beaconDetector));
+  
+  /*
   
   // if S1
   if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine || 
@@ -280,7 +290,7 @@ void loop() {
     }
     
     // in, or leaving sReloading (Todo)
-  }
+  } */ 
 }
 
 //=======================================================================
@@ -375,13 +385,21 @@ void TravelToCenterLine(){
       StopMoving();
       delay(1000);
       
-      RotateInPlace('R'); // exp3
-      delay(900); // toggle
-      RotateInPlace('L'); // experiment
-      delay(COMPLETE_STOP); // experiment
-      StopMoving(); // experiment
-      delay(500); // experiment // end exp3
-      CenterOnLine(); //CenterOnLine_TwoSensors(); // center on line, namely the center line
+      CollectEnvInfo();
+      while(centerTapeSet != tCenterAndRight || centerTapeSet != tCenter ||
+        centerTapeSet != tLeftAndCenter || centerTapeSet != tAll){
+          RotateInPlace('R'); // exp3
+          delay(600); // toggle
+          RotateInPlace('L'); // experiment
+          delay(COMPLETE_STOP); // experiment
+          StopMoving(); // experiment
+          delay(100); // experiment // end exp3
+          CollectEnvInfo();
+      }
+      
+      state = sGoingToCenterLine;
+      
+      // CenterOnLine_TwoSensors(); // center on line, namely the center line
     } else GoToCenterLine(); // continue going to center liene
   } 
   
@@ -475,9 +493,14 @@ void MoveForward_Fast(){
 // Results: pass
 // Review: bot can pretty accurately detect the reload station on slow and high speeds
 void FindReloadBeacon(){
-  state = sFindingReloadBeacon;
+  state = sFindingReloadBeacon; 
       
-  RotateInPlace('L');
+  if(IsTimerExpired(Init_Timer)){
+    RotateInPlace('L');
+  } else {
+    SetLeftRightMotorSpeed(60, -60);
+  } 
+  
   /*
   // set timer if not started
   if(IsTimerExpired(Rotate_Timer)){

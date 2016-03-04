@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    400 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    500 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -35,7 +35,7 @@
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 70
- 
+#define SLOW_PWM           47 // was 50 
 /*---------------Function Prototypes-------------------------*/
 
 // Loop Fn's
@@ -296,7 +296,7 @@ void TravelToCenterLine(){
         FindReloadBeacon();
     } else {
       RotateInPlace('R'); // experiment
-      delay(COMPLETE_STOP); // experiment
+      delay(150); // /*COMPLETE_STOP*/); // experiment
       StopMoving(); // experiment
       delay(500); // experiment
       RotateTowardCenterLine(); // otherwise, move toward center, change state
@@ -309,10 +309,13 @@ void TravelToCenterLine(){
       RotateTowardCenterLine();
     } else {
       RotateInPlace('L'); // experiment
-      delay(COMPLETE_STOP); // experiment
+      delay(150); // /* COMPLETE_STOP */); // experiment
       StopMoving(); // experiment
       delay(500); // experiment
-      GoToCenterLine();
+      
+      state = sStopped;
+      
+      ///GoToCenterLine();
     } // otherwise, head to center line
   }
   
@@ -343,8 +346,6 @@ void TravelToCenterLine(){
 // Center bot on line
 void CenterOnLine_TwoSensors(){
   state = sCenteringOnLine;
-  
-  if(centerTapeSet == tLeft){
     
     // move up, then stop
     MoveForward();
@@ -363,10 +364,7 @@ void CenterOnLine_TwoSensors(){
     delay(500); // experiment
     // state = sStopped; // exp2
     state = sGoingToBucket;
-    
-  } else /* if(centerTapeSet == tLeftAndRight || centerTapeSet == tRight) */{
-    MoveForward(); // exp2
-  }
+
   
   // Todo: Adjust cases as necessary
 }
@@ -382,7 +380,7 @@ void FindReloadBeacon(){
   state = sFindingReloadBeacon;
   
   if(IsTimerExpired(SlowRotate_Timer)){
-    SetLeftRightMotorSpeed(50, -50);
+    SetLeftRightMotorSpeed(SLOW_PWM, -SLOW_PWM);
   } else {
     SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
   }
@@ -408,11 +406,11 @@ void RotateTowardCenterLine(){
   static int pulse = 0; // reset pwm yet?
   
   if(pulse == 0){
-    StartTimer(SlowRotate_Timer, 500);
+    StartTimer(SlowRotate_Timer, 200); // was 500 
     pulse = 1;
   } else {
     if(IsTimerExpired(SlowRotate_Timer)){
-      SetLeftRightMotorSpeed(-50, 50);
+      SetLeftRightMotorSpeed(-SLOW_PWM, SLOW_PWM);
     } else {
       SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
     }

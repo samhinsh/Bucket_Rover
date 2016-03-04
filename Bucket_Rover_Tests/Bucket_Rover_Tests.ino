@@ -27,14 +27,16 @@
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  51
-#define MTR_SPEED_FAST     100
+#define MTR_SPEED_REGULAR  60
+#define MTR_SPEED_FAST     80
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      200  // was using 200
 #define CENTERONLINE_TIME  950
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 70
+#define SLOW_SPEED         60
+#define PWM_OVERCOME_SPEED 75
  
 /*---------------Function Prototypes-------------------------*/
 
@@ -131,7 +133,7 @@ enum Timer {
 //=======================================================================
 // State and Environment variables
 
-State state = sFindingReloadBeacon;
+State state = sGoingToCenterLine; // sFindingReloadBeacon;
 TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
 TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
 BeaconStat beacon = bUndetected; // 5kHz beacon detection status
@@ -212,8 +214,8 @@ void setup() {
   servo2.detach();
   servo3.detach();
   
-  if(IsTimerExpired(Init_Timer)){
-     StartTimer(Init_Timer, 500);    
+  if(IsTimerExpired(Init_Timer)){ // timer for pulsing at high pwm, to get smaller pwm moving
+     StartTimer(Init_Timer, 500); // for the purpose of driving slow in S1
   }
   
 }
@@ -224,18 +226,16 @@ void loop() {
   CollectEnvInfo();
   
   
-//  Serial.print("Tape: "); 
-//  Serial.println(centerTapeSet);
-//  Serial.print("State: ");
-//  Serial.println(state);
-//  Serial.print("Beacon state: ");
-//  Serial.println(beacon);
+  Serial.print("Tape: "); 
+  Serial.println(centerTapeSet);
+  Serial.print("State: ");
+  Serial.println(state);
+  Serial.print("Beacon state: ");
+  Serial.println(beacon);
   
   
   Serial.print("Beacon pin: ");
   Serial.println(digitalRead(beaconDetector));
-  
-  /*
   
   // if S1
   if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine || 
@@ -290,7 +290,8 @@ void loop() {
     }
     
     // in, or leaving sReloading (Todo)
-  } */ 
+  } 
+  
 }
 
 //=======================================================================
@@ -352,13 +353,16 @@ void TravelToCenterLine(){
   // in, or leaving sFindingReloadBeacon
   if(state == sFindingReloadBeacon){
     if(beacon == bUndetected){ // beacon undetected
-        FindReloadBeacon();
+        FindReloadBeacon(); // rotate toward beacon, then halt
     } else {
-      RotateInPlace('R'); // experiment
-      delay(COMPLETE_STOP); // experiment
-      StopMoving(); // experiment
-      delay(500); // experiment
-      RotateTowardCenterLine(); // otherwise, move toward center, change state
+      
+      // break
+      RotateInPlace('R');
+      delay(COMPLETE_STOP);
+      StopMoving();
+      delay(500);
+      
+      RotateTowardCenterLine(); // rotate to face center line, change state
     }
   }
   
@@ -367,10 +371,13 @@ void TravelToCenterLine(){
     if(!IsTimerExpired(CenterLine_Timer)){ // continue rotating toward line if timer still going
       RotateTowardCenterLine();
     } else {
-      RotateInPlace('L'); // experiment
-      delay(COMPLETE_STOP); // experiment
-      StopMoving(); // experiment
-      delay(1000); // experiment
+      
+      // break 
+      RotateInPlace('L');
+      delay(COMPLETE_STOP);
+      StopMoving();
+      delay(1000);
+      
       GoToCenterLine();
     } // otherwise, head to center line
   }
@@ -379,27 +386,20 @@ void TravelToCenterLine(){
   else if(state == sGoingToCenterLine){
     if(centerTapeSet == tLeft || 
       centerTapeSet == tRight || 
-      centerTapeSet == tLeftAndCenter){ // center line found
+      centerTapeSet == tLeftAndCenter || 
+      centerTapeSet == tCenterAndRight ||
+      centerTapeSet == tAll ||
+      centerTapeSet == tCenter){ // center line found
+      
+      // brake
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
       delay(1000);
       
-      CollectEnvInfo();
-      while(centerTapeSet != tCenterAndRight || centerTapeSet != tCenter ||
-        centerTapeSet != tLeftAndCenter || centerTapeSet != tAll){
-          RotateInPlace('R'); // exp3
-          delay(600); // toggle
-          RotateInPlace('L'); // experiment
-          delay(COMPLETE_STOP); // experiment
-          StopMoving(); // experiment
-          delay(100); // experiment // end exp3
-          CollectEnvInfo();
-      }
-      
-      state = sGoingToCenterLine;
-      
+      state = sStopped; 
       // CenterOnLine_TwoSensors(); // center on line, namely the center line
+      
     } else GoToCenterLine(); // continue going to center liene
   } 
   
@@ -458,7 +458,7 @@ void CenterOnLine(){
 void CenterOnLine_TwoSensors(){
   state = sCenteringOnLine;
   
-  if(centerTapeSet == tLeft){
+  if(centerTapeSet == tLeft || centerTapeSet == tLeftAndRight || centerTapeSet == tCenter ){
     
     // move up, then stop
     MoveForward();
@@ -495,10 +495,10 @@ void MoveForward_Fast(){
 void FindReloadBeacon(){
   state = sFindingReloadBeacon; 
       
-  if(IsTimerExpired(Init_Timer)){
+  if(IsTimerExpired(Init_Timer)){ // if timer up, rotate at regular speed
     RotateInPlace('L');
   } else {
-    SetLeftRightMotorSpeed(60, -60);
+    SetLeftRightMotorSpeed(PWM_OVERCOME_SPEED, -PWM_OVERCOME_SPEED); // rotate initially at high pwm
   } 
   
   /*
@@ -543,8 +543,18 @@ void RotateTowardCenterLine(){
 // Results: undetermined
 // Review: NA
 void GoToCenterLine(){
+  static int pulsed = 0; // for one-time action
+  
+  if(pulsed == 0){ // if not done yet
+   if(IsTimerExpired(Init_Timer)){
+     StartTimer(Init_Timer, 500); // start pwm timer
+     pulsed = 1;  
+    }
+  }
+  
+  MoveForward_Alt(); // start traveling to move forward at slow pwm 
   state = sGoingToCenterLine;
-  MoveForward_Fast();
+  
 }
 
 // Set left and right motors to specified speeds
@@ -562,7 +572,7 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
   digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
   
   analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
-  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed) + 12, 0, 100, 0, 200));
+  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed) + 5, 0, 100, 0, 200)); // was at 12
 }
 
 //=======================================================================
@@ -770,16 +780,32 @@ unsigned char IsTimerExpired(int timer){
   return (unsigned char)(TMRArd_IsTimerExpired(timer));
 }
 
+// move forward at standard speed
 // Set motors to constant forward speed
 // Result: pass
 void MoveForward(){
-  SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+  SetLeftRightMotorSpeed(70, 70);
+}
+
+// Set motors to constant forward speed at quick starting pwm
+// Result: pass
+void MoveForward_Alt(){
+  if(IsTimerExpired(Init_Timer)){
+    SetLeftRightMotorSpeed(MTR_SPEED, MTR_SPEED);
+  } else {
+    SetLeftRightMotorSpeed(PWM_OVERCOME_SPEED, PWM_OVERCOME_SPEED);
+  }
 }
 
 // Set motors to constant reverse speed
 // Result: pass
 void MoveReverse(){
-  SetLeftRightMotorSpeed(-MTR_SPEED, -MTR_SPEED);
+  
+  if(IsTimerExpired(Init_Timer)){
+    SetLeftRightMotorSpeed(SLOW_SPEED, SLOW_SPEED);
+  } else {
+    SetLeftRightMotorSpeed(-70, -70);
+  }
 }
 
 // Stop motors
@@ -841,8 +867,8 @@ void NudgePath(char direction, int speed){
 // Review: the bot translates very slightly when rotating, but distance is pretty negligable 
 void RotateInPlace(char direction){
   if(direction == 'L'){
-    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
-  } else if (direction == 'R'){
+    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED); 
+  } else if (direction == 'R'){ 
     SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
   } 
 }

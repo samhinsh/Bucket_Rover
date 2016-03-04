@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    500 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    450 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -123,7 +123,8 @@ enum Timer {
   MotorSpeed_Timer, // timer between changing the speed of the motor
   CenterLine_Timer,
   Rotate_Timer,
-  SlowRotate_Timer
+  SlowRotate_Timer,
+  Dropoff_Expiry_Timer
 };
 //=======================================================================
 
@@ -143,7 +144,7 @@ Servo servo3; // middle arm mechanism
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int middleCenterTape = A3;     // middle row tape
+const int middleCenterTape = 0; // A3;     // middle row tape
 const int middleLeftTape = A5;
 const int middleRightTape = A4;
 const int middleFarLeftTape = 0;
@@ -236,7 +237,17 @@ void loop() {
   
   // if S2
   else if(state == sGoingToBucket || state == sDroppingOffTokens){
-    if(centerTapeSet == tLeftAndRight || centerTapeSet == tAll || centerTapeSet == tNone){ // middleRowTape sitting on crossroad
+    /* if(IsTimerExpired(Dropoff_Expiry_Timer)){
+      // brake
+      MoveReverse();
+      delay(COMPLETE_STOP);
+      StopMoving();
+      delay(500);
+      Serial.println("Timer expired! Dropping off tokens!");
+      DropOffTokens(); // start dropping off tokens
+      state = sStopped;
+    } */
+    if(centerTapeSet == tLeftAndRight /*|| centerTapeSet == tAll || centerTapeSet == tNone */){ // middleRowTape sitting on crossroad
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
@@ -260,7 +271,7 @@ void GoToBucket(){
   
   // Todo:
   // start motors moving forward (likely, if not handled by FollowLine)
-  MoveForward();
+  // MoveForward();
   
   // change direction slightly (with motors) if off line (off center tape sensor)
   TwoSensorLineFollow();
@@ -295,6 +306,8 @@ void TravelToCenterLine(){
     if(beacon == bUndetected){ // beacon undetected
         FindReloadBeacon();
     } else {
+      
+      // brake
       RotateInPlace('R'); // experiment
       delay(150); // /*COMPLETE_STOP*/); // experiment
       StopMoving(); // experiment
@@ -308,14 +321,16 @@ void TravelToCenterLine(){
     if(!IsTimerExpired(CenterLine_Timer)){ // continue rotating toward line if timer still going
       RotateTowardCenterLine();
     } else {
+      
+      // brake
       RotateInPlace('L'); // experiment
       delay(150); // /* COMPLETE_STOP */); // experiment
       StopMoving(); // experiment
       delay(500); // experiment
       
-      state = sStopped;
+      // state = sStopped;
       
-      ///GoToCenterLine();
+      GoToCenterLine();
     } // otherwise, head to center line
   }
   
@@ -347,13 +362,14 @@ void TravelToCenterLine(){
 void CenterOnLine_TwoSensors(){
   state = sCenteringOnLine;
     
+    /*
     // move up, then stop
     MoveForward();
-    delay(800); // was at 100
+    delay(300); // was at 100
     MoveReverse();
     delay(COMPLETE_STOP);
     StopMoving();
-    delay(500);
+    delay(500); */
     
     // rotate right, then stop
     RotateInPlace('R');
@@ -364,6 +380,7 @@ void CenterOnLine_TwoSensors(){
     delay(500); // experiment
     // state = sStopped; // exp2
     state = sGoingToBucket;
+    StartTimer(Dropoff_Expiry_Timer, 15000);
 
   
   // Todo: Adjust cases as necessary
@@ -459,7 +476,7 @@ void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
   digitalWrite(rightMtrDirectionPin, (rightMtrSpeed) >= 0? HIGH : LOW);
   
   analogWrite(leftMtrEnablePin, map(abs(leftMtrSpeed), 0, 100, 0, 200));
-  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed) + 12, 0, 100, 0, 200));
+  analogWrite(rightMtrEnablePin, map(abs(rightMtrSpeed) + 7, 0, 100, 0, 200)); // was 12
 }
 
 //=======================================================================

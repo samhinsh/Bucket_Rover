@@ -21,13 +21,13 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    575 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    600 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
 #define TEN_SEC            10000
 #define TWO_MIN            120000
-#define MTR_SPEED_REGULAR  60
+#define MTR_SPEED_REGULAR  65
 #define MTR_SPEED_FAST     80
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      200  // was using 200
@@ -133,7 +133,7 @@ enum Timer {
 //=======================================================================
 // State and Environment variables
 
-State state = sGoingToCenterLine; // sFindingReloadBeacon;
+State state = sFindingReloadBeacon; // sGoingToCenterLine; // 
 TapeActivity centerTapeSet = tUndefined; // center 3 tape-set
 TapeActivity outsideTapeSet = tUndefined; // outside two tape-set
 BeaconStat beacon = bUndetected; // 5kHz beacon detection status
@@ -237,6 +237,7 @@ void loop() {
   Serial.print("Beacon pin: ");
   Serial.println(digitalRead(beaconDetector));
   
+
   // if S1
   if(state == sFindingReloadBeacon || state == sRotatingTowardCenterLine || 
      state == sGoingToCenterLine || state == sCenteringOnLine){ 
@@ -256,7 +257,7 @@ void loop() {
         delay(500);
         Serial.println("Dropping off tokens!");
         DropOffTokens(); // start dropping off tokens
-        state = sBackingUpToReload;
+        state = sStopped; //state = sBackingUpToReload;
       } else { // not in front of buckets, keep going to bucket
         GoToBucket(); // move forward to bucket (line follow)
       }
@@ -291,7 +292,7 @@ void loop() {
     
     // in, or leaving sReloading (Todo)
   } 
-  
+
 }
 
 //=======================================================================
@@ -362,6 +363,9 @@ void TravelToCenterLine(){
       StopMoving();
       delay(500);
       
+      
+      SetLeftRightMotorSpeed(-PWM_OVERCOME_SPEED, PWM_OVERCOME_SPEED);
+      delay(500); 
       RotateTowardCenterLine(); // rotate to face center line, change state
     }
   }
@@ -397,8 +401,8 @@ void TravelToCenterLine(){
       StopMoving();
       delay(1000);
       
-      state = sStopped; 
-      // CenterOnLine_TwoSensors(); // center on line, namely the center line
+      //state = sStopped; 
+      CenterOnLine_TwoSensors(); // center on line, namely the center line
       
     } else GoToCenterLine(); // continue going to center liene
   } 
@@ -414,10 +418,9 @@ void TravelToCenterLine(){
 void CenterOnLine(){
   
   state = sCenteringOnLine;
-  StopMoving();
   
   if(centerTapeSet == tAll){ // at the crossroad already
-    BrakeFromForward(); // brake
+    // BrakeFromForward(); // brake
     StopMoving(); // stop moving
     delay(1000);
     state = sGoingToBucket; 
@@ -425,20 +428,20 @@ void CenterOnLine(){
     // go into drop off state
   } else {  
     if(centerTapeSet == tLeft){
-      NudgePath('R', rRegular);
+      RotateInPlace('L');
     } 
     
     else if(centerTapeSet == tLeftAndCenter){
-      NudgePath('R', rRegular);
+      RotateInPlace('L');
     } 
     
     
     else if(centerTapeSet == tCenterAndRight){
-      NudgePath('L', rRegular); // default
+      RotateInPlace('R'); // default
     } 
     
     else if(centerTapeSet == tRight){
-      NudgePath('L', rRegular);
+      RotateInPlace('R');
     }
     
     else if(centerTapeSet == tCenter){
@@ -447,7 +450,7 @@ void CenterOnLine(){
     }
     
     else{
-      StopMoving(); // default
+      RotateInPlace('R'); // default
     }
     
   }
@@ -469,6 +472,8 @@ void CenterOnLine_TwoSensors(){
     delay(500);
     
     // rotate right, then stop
+    SetLeftRightMotorSpeed(PWM_OVERCOME_SPEED, -PWM_OVERCOME_SPEED);
+    delay(500);
     RotateInPlace('R');
     delay(CENTERONLINE_TIME);
     RotateInPlace('L'); // experiment
@@ -552,7 +557,7 @@ void GoToCenterLine(){
     }
   }
   
-  MoveForward_Alt(); // start traveling to move forward at slow pwm 
+  MoveForward(); // start traveling to move forward at slow pwm 
   state = sGoingToCenterLine;
   
 }
@@ -784,7 +789,7 @@ unsigned char IsTimerExpired(int timer){
 // Set motors to constant forward speed
 // Result: pass
 void MoveForward(){
-  SetLeftRightMotorSpeed(70, 70);
+  SetLeftRightMotorSpeed(80, 80);
 }
 
 // Set motors to constant forward speed at quick starting pwm

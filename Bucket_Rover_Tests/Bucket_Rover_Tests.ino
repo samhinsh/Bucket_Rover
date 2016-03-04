@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    600 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    550 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -143,7 +143,7 @@ Servo servo3; // middle arm mechanism
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int middleCenterTape = 0;     // middle row tape
+const int middleCenterTape = A3;     // middle row tape
 const int middleLeftTape = A5;
 const int middleRightTape = A4;
 const int middleFarLeftTape = 0;
@@ -216,7 +216,6 @@ void setup() {
 void loop() {
   
   // TwoSensorLineFollow();
-  
   CollectEnvInfo();
   Serial.print("Tape: "); 
   Serial.println(centerTapeSet);
@@ -280,7 +279,6 @@ void loop() {
     
     // in, or leaving sReloading (Todo)
   }
-  
 }
 
 //=======================================================================
@@ -316,13 +314,13 @@ void DropOffTokens(){
   servo2.write(60);  // full position
   servo3.write(120); // full position
   
-  delay(2000);
+  delay(1000);
   
   servo1.write(0);   // initial (compact) position
   servo2.write(180); // initial (compact) position
   servo3.write(0);   // initial (compact) position
   
-  delay(3000);
+  delay(1000);
   
   servo1.detach();
   servo2.detach();
@@ -352,7 +350,7 @@ void TravelToCenterLine(){
       RotateInPlace('L'); // experiment
       delay(COMPLETE_STOP); // experiment
       StopMoving(); // experiment
-      delay(500); // experiment
+      delay(1000); // experiment
       GoToCenterLine();
     } // otherwise, head to center line
   }
@@ -365,7 +363,7 @@ void TravelToCenterLine(){
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
-      delay(500);
+      delay(1000);
       CenterOnLine_TwoSensors(); // center on line, namely the center line
     } else GoToCenterLine(); // continue going to center liene
   } 

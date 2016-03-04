@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    550 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    575 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -31,7 +31,7 @@
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      200  // was using 200
-#define CENTERONLINE_TIME  1000
+#define CENTERONLINE_TIME  950
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 70
@@ -239,7 +239,7 @@ void loop() {
     
     // in, or leaving sGoingToBucket
     if(state == sGoingToBucket){
-      if(centerTapeSet == tLeftAndRight){ // middleRowTape sitting on bucket crossroad
+      if(centerTapeSet == tLeftAndRight || centerTapeSet == tAll){ // middleRowTape sitting on bucket crossroad
         MoveReverse();
         delay(COMPLETE_STOP);
         StopMoving();
@@ -259,9 +259,11 @@ void loop() {
         state = sStopped; // BackupToReloadStation();
       }  
       // otherwise, continue dropping off tokens (implicitly)
-      else DropOffTokens();
-      MoveReverse(); // exp
-      delay(1000);
+      else {
+        DropOffTokens();
+        MoveReverse(); // exp
+        delay(1000);
+      }
     }
     
     // in, or leaving sBackingUpToReloadStation (Todo)
@@ -283,6 +285,14 @@ void loop() {
 
 //=======================================================================
 // Functions Needing Testing
+
+
+void BrakeFromForward(){
+  MoveReverse();
+  delay(COMPLETE_STOP);
+  StopMoving();
+  delay(500);
+}
 
 // Back the bot up to the reload station
 void BackupToReloadStation(){
@@ -310,9 +320,9 @@ void DropOffTokens(){
   servo2.attach(servo2Pin);
   servo3.attach(servo3Pin);
   
-  servo1.write(120); // full position
-  servo2.write(60);  // full position
-  servo3.write(120); // full position
+  servo1.write(90); // full position // was 120
+  servo2.write(90);  // full position // was 60
+  servo3.write(145); // full position // was 120
   
   delay(1000);
   
@@ -359,19 +369,71 @@ void TravelToCenterLine(){
   else if(state == sGoingToCenterLine){
     if(centerTapeSet == tLeft || 
       centerTapeSet == tRight || 
-      centerTapeSet == tLeftAndRight){ // line found
+      centerTapeSet == tLeftAndCenter){ // center line found
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
       delay(1000);
-      CenterOnLine_TwoSensors(); // center on line, namely the center line
+      
+      RotateInPlace('R'); // exp3
+      delay(900); // toggle
+      RotateInPlace('L'); // experiment
+      delay(COMPLETE_STOP); // experiment
+      StopMoving(); // experiment
+      delay(500); // experiment // end exp3
+      CenterOnLine(); //CenterOnLine_TwoSensors(); // center on line, namely the center line
     } else GoToCenterLine(); // continue going to center liene
   } 
   
   // in, or leaving sCenterOnLine 
   else if(state == sCenteringOnLine){
-    CenterOnLine_TwoSensors(); // hard-coded version on the one in Bucket_Rover
+    CenterOnLine(); // hard-coded version on the one in Bucket_Rover
   }
+}
+
+
+// line centering with regular sensors (three)
+void CenterOnLine(){
+  
+  state = sCenteringOnLine;
+  StopMoving();
+  
+  if(centerTapeSet == tAll){ // at the crossroad already
+    BrakeFromForward(); // brake
+    StopMoving(); // stop moving
+    delay(1000);
+    state = sGoingToBucket; 
+    
+    // go into drop off state
+  } else {  
+    if(centerTapeSet == tLeft){
+      NudgePath('R', rRegular);
+    } 
+    
+    else if(centerTapeSet == tLeftAndCenter){
+      NudgePath('R', rRegular);
+    } 
+    
+    
+    else if(centerTapeSet == tCenterAndRight){
+      NudgePath('L', rRegular); // default
+    } 
+    
+    else if(centerTapeSet == tRight){
+      NudgePath('L', rRegular);
+    }
+    
+    else if(centerTapeSet == tCenter){
+      MoveForward(); // go ahead, centered on line
+      state = sGoingToBucket;
+    }
+    
+    else{
+      StopMoving(); // default
+    }
+    
+  }
+
 }
 
 // Center bot on line

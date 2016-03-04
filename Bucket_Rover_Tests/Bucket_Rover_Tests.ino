@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    450 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    600 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -282,7 +282,7 @@ void DropOffTokens(){
   servo2.attach(servo2Pin);
   servo3.attach(servo3Pin);
   
-  servo1.write(90); // full position // was 120
+  servo1.write(95); // full position // was 120
   servo2.write(90);  // full position // was 60
   servo3.write(145); // full position // was 120
   

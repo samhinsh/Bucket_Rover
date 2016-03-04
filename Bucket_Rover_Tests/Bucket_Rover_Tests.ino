@@ -21,7 +21,7 @@
 /*---------------Module Defines-----------------------------*/
 #define LIGHT_THRESHOLD    350 // smaller at night
 #define FENCE_THRESHOLD    700
-#define CENTERFIND_TIME    700 // also consider adjusting reverse+stop time
+#define CENTERFIND_TIME    400 // also consider adjusting reverse+stop time
 #define ONE_SEC            1000
 #define TWO_SEC            2000
 #define THREE_SEC          3000
@@ -31,7 +31,7 @@
 #define MTR_SPEED_FAST     100
 #define MTR_SPEED          MTR_SPEED_REGULAR
 #define COMPLETE_STOP      300  // was using 200
-#define CENTERONLINE_TIME  900
+#define CENTERONLINE_TIME  800 // was 900
 #define MTR_STOP_DELAY     800
 #define NUDGE_REDUCE_CONST_MINOR 50
 #define NUDGE_REDUCE_CONST_MAJOR 70
@@ -123,6 +123,7 @@ enum Timer {
   MotorSpeed_Timer, // timer between changing the speed of the motor
   CenterLine_Timer,
   Rotate_Timer,
+  SlowRotate_Timer
 };
 //=======================================================================
 
@@ -142,7 +143,7 @@ Servo servo3; // middle arm mechanism
 // Pins - Physical pinout of circuitry
 
 // Unassigned
-const int middleCenterTape = 0;     // middle row tape
+const int middleCenterTape = A3;     // middle row tape
 const int middleLeftTape = A5;
 const int middleRightTape = A4;
 const int middleFarLeftTape = 0;
@@ -210,6 +211,10 @@ void setup() {
   servo2.detach();
   servo3.detach();
   
+  if(IsTimerExpired(SlowRotate_Timer)){
+    StartTimer(SlowRotate_Timer, 500);
+  }
+  
 }
 
 void loop() {
@@ -231,7 +236,7 @@ void loop() {
   
   // if S2
   else if(state == sGoingToBucket || state == sDroppingOffTokens){
-    if(centerTapeSet == tLeftAndRight){ // middleRowTape sitting on crossroad
+    if(centerTapeSet == tLeftAndRight || centerTapeSet == tAll || centerTapeSet == tNone){ // middleRowTape sitting on crossroad
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
@@ -315,7 +320,12 @@ void TravelToCenterLine(){
   else if(state == sGoingToCenterLine){
     if(centerTapeSet == tLeft || 
       centerTapeSet == tRight || 
-      centerTapeSet == tLeftAndRight){ // line found
+      centerTapeSet == tCenter ||
+      centerTapeSet == tLeftAndRight || 
+      centerTapeSet == tCenterAndRight ||
+      centerTapeSet == tLeftAndCenter ||
+      centerTapeSet == tLeftAndRight ||
+      centerTapeSet == tAll){ // line found
       MoveReverse();
       delay(COMPLETE_STOP);
       StopMoving();
@@ -338,7 +348,7 @@ void CenterOnLine_TwoSensors(){
     
     // move up, then stop
     MoveForward();
-    delay(500); // was at 100
+    delay(800); // was at 100
     MoveReverse();
     delay(COMPLETE_STOP);
     StopMoving();
@@ -370,8 +380,13 @@ void MoveForward_Fast(){
 // Review: bot can pretty accurately detect the reload station on slow and high speeds
 void FindReloadBeacon(){
   state = sFindingReloadBeacon;
-      
-  RotateInPlace('L');
+  
+  if(IsTimerExpired(SlowRotate_Timer)){
+    SetLeftRightMotorSpeed(50, -50);
+  } else {
+    SetLeftRightMotorSpeed(MTR_SPEED, -MTR_SPEED);
+  }
+  // RotateInPlace('L');
   /*
   // set timer if not started
   if(IsTimerExpired(Rotate_Timer)){
@@ -390,13 +405,26 @@ void FindReloadBeacon(){
 //         StopMoving afterward, and/or breaking up rotation into start-stop chunks
 void RotateTowardCenterLine(){
   state = sRotatingTowardCenterLine;
+  static int pulse = 0; // reset pwm yet?
+  
+  if(pulse == 0){
+    StartTimer(SlowRotate_Timer, 500);
+    pulse = 1;
+  } else {
+    if(IsTimerExpired(SlowRotate_Timer)){
+      SetLeftRightMotorSpeed(-50, 50);
+    } else {
+      SetLeftRightMotorSpeed(-MTR_SPEED, MTR_SPEED);
+    }
+  }
   
   // rotate rightward toward center line
-  RotateInPlace('R');
+  // RotateInPlace('R');
   
   // set timer if not started
   if(IsTimerExpired(CenterLine_Timer)){
     StartTimer(CenterLine_Timer, CENTERFIND_TIME);
+    
     // Todo: Fix timing^ based on wheel speed at beacon-detection range
   }
   

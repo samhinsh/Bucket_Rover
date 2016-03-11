@@ -5,6 +5,7 @@ Author: Samuel Hinshelwood, Jr.
 
 ME 210 Final Project, Winter 2016
 Team: Andrew Anderson, Taylor Clayton, Mario Chapa, Sam Hinshelwood
+Website: http://me210team72016.weebly.com/
 
 Goal:
 The goal of this project is to design, build, and code an autonomous bot

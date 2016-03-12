@@ -22,9 +22,8 @@
  * Mon Feb 29 - Abstracted TravelToCenterLine() helpers, added RotateInPlace(),
  *              performed testing on movement fns, beacon detection, and line following
  * 
- * Todos: 
- * -Formulate line-following code
- * -Test all subsystems 
+ * Todo:
+ * Merge final changes from Bucket_Rover_Tests into this file
  */
  
 /*---------------Includes-----------------------------------*/
@@ -304,7 +303,6 @@ void ReadTapeSensors(){
 
 // Get reading from 1kHz beacon-detector circuit
 void Check1kHzBeaconDetector(){
-  // Todo: set beacon pin to 1kHz
   
   // on-value inverted (detected shows LOW on circuit), so flip the result
   !digitalRead(beaconDetector) > 0? beacon_1kHz = bDetected : beacon_1kHz = bUndetected;
@@ -312,7 +310,6 @@ void Check1kHzBeaconDetector(){
 
 // Get reading from 5kHz beacon-detector circuit
 void Check5kHzBeaconDetector(){
-  // Todo: set beacon pin to 5kHz
   
   !digitalRead(beaconDetector) > 0? beacon_5kHz = bDetected : beacon_5kHz = bUndetected;
 }
@@ -385,8 +382,6 @@ void RotateTowardCenterLine(){
   // set timer if not started
   if(IsTimerExpired(CenterLine_Timer)){
     StartTimer(CenterLine_Timer, TWO_SEC); // 2-second timer
-    
-    // Todo: Fix timing^ based on wheel speed at beacon-detection range
   }
 }
 
@@ -406,7 +401,6 @@ void CenterOnLine(){
     RotateInPlace('R');
   }
   
-  // Todo: Test if third case (for right tape) is necessary
 }
 
 
@@ -466,8 +460,6 @@ void GoToBucket(){
   state = sGoingToBucket;
   // change LED indicator
   
-  // Todo:
-  // start motors moving forward (likely, if not handled by FollowLine)
   MoveForward();
   
   // change direction slightly (with motors) if off line (off center tape sensor)
@@ -475,7 +467,6 @@ void GoToBucket(){
 }
 
 // Drop off tokens by turning on servos & starting
-// Called continually (Todo)
 void DropOffTokens(){
   state = sDroppingOffTokens;
   // change LED indicator
@@ -488,8 +479,6 @@ void DropOffTokens(){
     StartTimer(DropOff_Timer, THREE_SEC); // 3-second timer
   }
   
-  // Todo:
-  // turn drop-off servo(s) on
 }
 
 // Back the bot up to the reload station
@@ -523,8 +512,7 @@ void Reload(){
 // to remain centered on middleRowTape's center tape sensor)
 void FollowLine(){
   
-  // Todo:
-  // Implement tape-reading cases and motor turning + timer (?-unsure)
+  // Implement tape-reading cases and motor turning + timer
 }
 
 // Rotates bot to the left or right slightly, with 2 intensities 
@@ -571,7 +559,7 @@ void StopMoving(){
 // Acceptable -100 <= MtrSpeed <= 100
 // Flips the motor's direction if  MtrSpeed < 0
 void SetLeftRightMotorSpeed(int leftMtrSpeed, int rightMtrSpeed){
-  // Todo:
+ 
   // Orient/fix code for operating motor (below)
   
   // set direction of motor based on sign of MtrSpeed var(s)

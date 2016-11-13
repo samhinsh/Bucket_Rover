@@ -1,7 +1,7 @@
 Bucket Rover
 ==========
 
-Author: Samuel Hinshelwood, Jr.
+![Alt text](rover.jpg?raw=true "rover")
 
 ME 210 Final Project, Winter 2016
 
